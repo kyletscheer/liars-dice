@@ -20,6 +20,10 @@
             <h1 class="text-center">Liar's Dice Probability Calculator</h1>
             <p class="text-center">Analyze probabilities for your current turn, evaluate previous claims, and plan your
                 next move in Liar's Dice.</p>
+            <!-- About Button with Icon -->
+            <div class="text-center"><a href="about.html" class="btn btn-info">
+                    <i class="bi bi-info-circle"></i> About
+                </a></div><br>
             <!-- Input Section -->
             <div class="card mb-4">
                 <div class="card-body">
@@ -56,7 +60,10 @@
                                 </select>
                             </div>
                         </div>
-
+                        <div>
+                            <label for="claimantDice">Claimant's Dice:</label>
+                            <input type="number" id="claimantDice" class="form-control" name="claimantDice" required>
+                        </div>
                         <div class="form-check mb-3">
                             <input class="form-check-input" type="checkbox" id="wildOnes" checked>
                             <label class="form-check-label" for="wildOnes">1s are Wild</label>
@@ -109,21 +116,14 @@
                     <h3 class="card-title">Results</h3>
 
                     <div id="results">
-                        <h4>Probability of Previous Claim:</h4>
-                        <p id="prevClaimProbability"></p>
 
-                        <div id="yourClaimSection" style="display: none;">
-                            <h4>Your Claim Options:</h4>
-                            <table class="table table-bordered">
-                                <thead>
-                                    <tr>
-                                        <th>Claim</th>
-                                        <th>Probability</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="yourClaimTable"></tbody>
-                            </table>
-                        </div>
+                        <!-- Display the Default Probability -->
+                        <h4>Default Probability (without claimant's dice):</h4>
+                        <p id="defaultClaimProbability"></p>
+
+                        <!-- Display the Adjusted Probability -->
+                        <h4 id="claimantProbHeading">Adjusted Probability (with claimant's dice):</h4>
+                        <p id="adjustedClaimProbability"></p>
 
                         <h4>Next Possible Moves:</h4>
                         <table class="table table-bordered">
@@ -131,6 +131,7 @@
                                 <tr>
                                     <th>Next Move</th>
                                     <th>Probability</th>
+                                    <th id="claimantProbHeader">Probability with Assumption (Claimant's Dice)</th>
                                 </tr>
                             </thead>
                             <tbody id="nextMovesTable"></tbody>
@@ -138,81 +139,187 @@
                     </div>
                 </div>
             </div>
+
+
         </div>
-</main>
-  <!-- Footer -->
-  <footer class="bg-white border-top py-4 mt-auto">
-    <div class="container">
-        <div class="d-flex justify-content-between align-items-center">
-            <div>
-                Made by <a href="https://www.kylescheer.com" target="_blank">Kyle Scheer</a>
-            </div>
-            <a href="https://github.com/kyletscheer/liars-dice/" target="_blank">View Code</a>
-            <!-- Theme toggle moved outside collapse -->
-            <div class="theme-toggle" id="themeToggle" role="button" aria-label="Toggle theme">
-                <i class="bi bi-sun-fill"></i>
+    </main>
+    <!-- Footer -->
+    <footer class="bg-white border-top py-4 mt-auto">
+        <div class="container">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    Made by <a href="https://www.kylescheer.com" target="_blank">Kyle Scheer</a>
+                </div>
+                <a href="https://github.com/kyletscheer/liars-dice/" target="_blank">View Code</a>
+                <!-- Theme toggle moved outside collapse -->
+                <div class="theme-toggle" id="themeToggle" role="button" aria-label="Toggle theme">
+                    <i class="bi bi-sun-fill"></i>
+                </div>
             </div>
         </div>
-    </div>
-</footer>
+    </footer>
 
-<!-- Bootstrap Bundle with Popper -->
-<script src="darkmode.js"></script>
-        <script>
-            function calculateProbability(quantity, face, yourDice, totalDice, wildOnes) {
-                const remainingDice = totalDice - yourDice.length;
-                const yourContribution = yourDice.filter(die => die === face || (wildOnes && die === 1 && face !== 1)).length;
-                const remainingClaim = Math.max(0, quantity - yourContribution);
+    <!-- Bootstrap Bundle with Popper -->
+    <script src="darkmode.js"></script>
+    <script>
+        // Calculate Probability Without Claimant Dice (Default)
+        function calculateProbabilityWithoutClaimant(quantity, face, yourDice, totalDice, wildOnes) {
+            console.log(`WITHOUT CLAIMANT Inputs: Quantity Claimed = ${quantity}, Face = ${face}, Your Dice = ${yourDice}, Total Dice = ${totalDice}, Wild Ones = ${wildOnes}`);
+            const remainingDice = totalDice - yourDice.length;
+            console.log(`Remaining Unseen Dice: ${remainingDice}`);
 
-                if (remainingClaim === 0) return 1; // Guaranteed if your dice fulfill the claim.
+            const yourContribution = yourDice.filter(die => die === face || (wildOnes && die === 1 && face !== 1)).length;
+            console.log(`Your Contribution: ${yourContribution}`);
 
-                const p = wildOnes && face !== 1 ? 2 / 6 : 1 / 6;
-                let probability = 0;
-                for (let i = remainingClaim; i <= remainingDice; i++) {
-                    probability += (factorial(remainingDice) / (factorial(i) * factorial(remainingDice - i))) * Math.pow(p, i) * Math.pow(1 - p, remainingDice - i);
-                }
+            const remainingClaim = Math.max(0, quantity - yourContribution);
+            console.log(`Remaining Claim Needed from Unseen Dice: ${remainingClaim}`);
 
-                return probability;
+            if (remainingClaim === 0) {
+                console.log("Claim already fulfilled. Probability is 100%");
+                return 1; // Guaranteed if your dice fulfill the claim.
             }
 
-            function factorial(n) {
-                if (n === 0 || n === 1) return 1;
-                return n * factorial(n - 1);
+            const p = wildOnes && face !== 1 ? 2 / 6 : 1 / 6;
+            let probability = 0;
+            for (let i = remainingClaim; i <= remainingDice; i++) {
+                probability += (factorial(remainingDice) / (factorial(i) * factorial(remainingDice - i))) * Math.pow(p, i) * Math.pow(1 - p, remainingDice - i);
+
+            }
+            console.log(`Final Probability: ${probability}`);
+
+            return probability;
+        }
+
+        // Calculate Probability With Claimant Dice
+        function calculateProbabilityWithClaimant(quantity, face, yourDice, totalDice, wildOnes, claimantDice, previousClaimFace) {
+            console.log(`WITH CLAIMANT Inputs: Quantity Claimed = ${quantity}, Face = ${face}, Your Dice = ${yourDice}, Total Dice = ${totalDice}, Claimant Dice = ${claimantDice}, Wild Ones = ${wildOnes}`);
+
+            const yourContribution = yourDice.filter(die => die === face || (wildOnes && die === 1 && face !== 1)).length;
+            console.log(`Your Contribution: ${yourContribution}`);
+
+            const p = wildOnes && face !== 1 ? 2 / 6 : 1 / 6;
+            const estimatedClaimantContribution = Math.floor(claimantDice * p);
+            console.log(`Claimant Estimated Contribution: ${estimatedClaimantContribution}`);
+
+            let sameAsClaim = 0;
+            if (face === previousClaimFace) {
+                sameAsClaim = estimatedClaimantContribution;
+            }
+            console.log(`sameAsClaim: ${sameAsClaim}`);
+            const remainingDice = totalDice - yourDice.length - estimatedClaimantContribution;
+            console.log(`Remaining Unseen Dice: ${remainingDice}`);
+
+            const remainingClaim = Math.max(0, quantity - (yourContribution + sameAsClaim));
+            console.log(`Remaining Claim Needed from Unseen Dice: ${remainingClaim}`);
+
+            if (remainingClaim > remainingDice) {
+                console.log("Impossible claim. Probability is 0%");
+                return 0;
             }
 
-            document.getElementById('calculateBtn').addEventListener('click', () => {
-                const yourDiceInput = document.getElementById('yourDice').value.trim().split(',').map(Number);
-                const totalDice = parseInt(document.getElementById('totalDice').value);
-                const prevClaimQuantity = parseInt(document.getElementById('prevClaimQuantity').value);
-                const prevClaimFace = parseInt(document.getElementById('prevClaimFace').value);
-                const wildOnes = document.getElementById('wildOnes').checked;
+            if (remainingClaim === 0) {
+                console.log("Claim already fulfilled. Probability is 100%");
+                return 1;
+            }
 
-                const prevClaimProb = calculateProbability(prevClaimQuantity, prevClaimFace, yourDiceInput, totalDice, wildOnes);
-                document.getElementById('prevClaimProbability').innerText = `${(prevClaimProb * 100).toFixed(2)}%`;
+            let probability = 0;
+            for (let i = remainingClaim; i <= remainingDice; i++) {
+                probability += (factorial(remainingDice) / (factorial(i) * factorial(remainingDice - i))) *
+                    Math.pow(p, i) * Math.pow(1 - p, remainingDice - i);
+            }
 
-                const yourClaimQuantity = document.getElementById('yourClaimQuantity')?.value;
-                const yourClaimFace = document.getElementById('yourClaimFace')?.value;
+            console.log(`Final Probability: ${probability}`);
+            return probability;
+        }
 
-                if (yourClaimQuantity && yourClaimFace) {
-                    const yourClaimProb = calculateProbability(parseInt(yourClaimQuantity), parseInt(yourClaimFace), yourDiceInput, totalDice, wildOnes);
-                    const yourClaimSection = document.getElementById('yourClaimSection');
-                    yourClaimSection.style.display = 'block';
 
-                    const yourClaimTable = document.getElementById('yourClaimTable');
-                    yourClaimTable.innerHTML = `<tr><td>${yourClaimQuantity} ${yourClaimFace}s</td><td>${(yourClaimProb * 100).toFixed(2)}%</td></tr>`;
+
+        // Event Listener for Calculation
+        document.getElementById('calculateBtn').addEventListener('click', () => {
+            const yourDiceInput = document.getElementById('yourDice').value.trim().split(',').map(Number);
+            const totalDice = parseInt(document.getElementById('totalDice').value);
+            const prevClaimQuantity = parseInt(document.getElementById('prevClaimQuantity').value);
+            const prevClaimFace = parseInt(document.getElementById('prevClaimFace').value);
+
+            // Ensure Wild Ones is a boolean (checked or unchecked)
+            const wildOnes = document.getElementById('wildOnes').checked;
+
+            // Adjust Claimant Dice to be a number
+            const claimantDice = parseInt(document.getElementById('claimantDice').value);
+            const estimatedClaimantContribution = Math.floor(claimantDice * (wildOnes && prevClaimFace !== 1 ? 2 / 6 : 1 / 6));
+
+            // Validate Your Dice: Only 1-6, comma-separated
+            const validDicePattern = /^([1-6](,[1-6])*)?$/;
+            if (!validDicePattern.test(yourDiceInput)) {
+                alert("Invalid dice input! Enter numbers between 1 and 6, separated by commas.");
+                return;
+            }
+
+            // Validate Total Dice
+            if (isNaN(totalDice) || totalDice < 1) {
+                alert("Total Dice must be a positive number.");
+                return;
+            }
+
+            // Validate Previous Claim Quantity
+            if (isNaN(prevClaimQuantity) || prevClaimQuantity < 1) {
+                alert("Previous Claim Quantity must be at least 1.");
+                return;
+            }
+
+            // Validate Claimant's Dice
+            if (isNaN(claimantDice) || claimantDice < 1) {
+                alert("Claimant's Dice must be 1 or greater.");
+                return;
+            }
+
+            // Ensure sum of Your Dice and Claimant Dice does not exceed Total Dice
+            if (yourDiceInput.length + claimantDice > totalDice) {
+                alert("Your Dice and Claimant Dice together cannot exceed the total number of dice in play.");
+                return;
+            }
+
+            // Update table header and heading dynamically
+            document.getElementById('claimantProbHeader').innerText = `Probability if claimant has estimated ${estimatedClaimantContribution} of ${prevClaimFace}s`;
+            document.getElementById('claimantProbHeading').innerText = `Probability if claimant has estimated ${estimatedClaimantContribution} of ${prevClaimFace}s:`;
+
+
+            // Default Calculation: Without considering claimant's dice
+            const defaultProb = calculateProbabilityWithoutClaimant(prevClaimQuantity, prevClaimFace, yourDiceInput, totalDice, wildOnes);
+            document.getElementById('defaultClaimProbability').innerText = `Default Probability: ${(defaultProb * 100).toFixed(2)}%`;
+
+            // Adjusted Calculation: Considering claimant's dice
+            const adjustedProb = calculateProbabilityWithClaimant(prevClaimQuantity, prevClaimFace, yourDiceInput, totalDice, wildOnes, claimantDice, prevClaimFace);
+            const adjustedProbText = `Probability if claimant has ${estimatedClaimantContribution} of ${prevClaimFace}s: ${(adjustedProb * 100).toFixed(2)}%`;
+            document.getElementById('adjustedClaimProbability').innerText = adjustedProbText;
+
+            // Display Results in the Table
+            const nextMovesTable = document.getElementById('nextMovesTable');
+            nextMovesTable.innerHTML = '';
+            for (let i = prevClaimQuantity; i <= prevClaimQuantity + 2; i++) {
+                for (let j = 1; j <= 6; j++) {
+                    if (i === prevClaimQuantity && j <= prevClaimFace) continue; // Skip invalid moves.
+
+                    const probWithoutClaimant = calculateProbabilityWithoutClaimant(i, j, yourDiceInput, totalDice, wildOnes);
+                    const probWithClaimant = calculateProbabilityWithClaimant(i, j, yourDiceInput, totalDice, wildOnes, claimantDice, prevClaimFace);
+
+                    nextMovesTable.innerHTML += `
+                <tr>
+                    <td>${i} ${j}s</td>
+                    <td>${(probWithoutClaimant * 100).toFixed(2)}%</td>
+                    <td>${(probWithClaimant * 100).toFixed(2)}%</td>
+                </tr>
+            `;
                 }
+            }
+        });
 
-                const nextMovesTable = document.getElementById('nextMovesTable');
-                nextMovesTable.innerHTML = '';
-                for (let i = prevClaimQuantity; i <= prevClaimQuantity + 2; i++) {
-                    for (let j = 1; j <= 6; j++) {
-                        if (i === prevClaimQuantity && j <= prevClaimFace) continue; // Skip invalid moves.
-                        const prob = calculateProbability(i, j, yourDiceInput, totalDice, wildOnes);
-                        nextMovesTable.innerHTML += `<tr><td>${i} ${j}s</td><td>${(prob * 100).toFixed(2)}%</td></tr>`;
-                    }
-                }
-            });
-        </script>
+
+        function factorial(n) {
+            if (n === 0 || n === 1) return 1;
+            return n * factorial(n - 1);
+        }
+    </script>
 </body>
 
 </html>
