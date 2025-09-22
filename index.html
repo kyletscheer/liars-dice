@@ -1,325 +1,1123 @@
 <!DOCTYPE html>
-<html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<html lang="en" data-bs-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Liar's Dice Probability Calculator</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Bootstrap and Bootstrap Icons -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css"
+      rel="stylesheet"
+    />
+    <!-- MathJax for LaTeX rendering -->
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script
+      id="MathJax-script"
+      async
+      src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"
+    ></script>
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Helvetica, Arial, sans-serif;
+        line-height: 1.6;
+        padding: 20px;
+      }
+      .container {
+        max-width: 1000px;
+        margin: auto;
+      }
+      .card {
+        background-color: #fff;
+        padding: 25px;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        margin-bottom: 25px;
+      }
+      h1,
+      h2,
+      h3 {
+        color: #1a1a1a;
+        font-weight: 600;
+      }
+      h1 {
+        text-align: center;
+        font-size: 2.5em;
+        margin-bottom: 30px;
+      }
+      h2 {
+        font-size: 1.8em;
+        border-bottom: 2px solid #ddd;
+        padding-bottom: 10px;
+        margin-top: 0;
+      }
+      h3 {
+        font-size: 1.4em;
+        color: #444;
+      }
+      .input-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+        margin-top: 15px;
+      }
+      .input-grid label {
+        font-weight: 500;
+        display: block;
+        margin-bottom: 5px;
+      }
+      .input-grid input[type="number"],
+      .input-grid input[type="text"],
+      .input-grid input[type="range"],
+      .input-grid select {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        font-size: 1em;
+      }
+      .checkbox-container {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .step-card {
+        background-color: #f9f9f9;
+        padding: 20px;
+        border-radius: 10px;
+        margin-top: 20px;
+        border: 1px solid #eee;
+      }
+      .info-box {
+        background-color: #e6f3ff;
+        border-left: 4px solid #007bff;
+        padding: 15px;
+        border-radius: 8px;
+        margin-top: 10px;
+      }
+      .table-container {
+        margin-top: 15px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        overflow: hidden;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      th,
+      td {
+        padding: 12px;
+        text-align: left;
+        border-bottom: 1px solid #ddd;
+        font-size: 0.9em;
+      }
+      thead tr {
+        background-color: #eef;
+      }
+      .final-result {
+        font-size: 1.2em;
+        font-weight: bold;
+        margin-top: 20px;
+        text-align: center;
+        padding: 15px;
+        background-color: #e6ffed;
+        border: 1px solid #b3e6c3;
+        border-radius: 8px;
+      }
 
-    <link href="style.css" rel="stylesheet">
+      /* MathJax blocks */
+      .math-block {
+        background-color: #fafafa;
+        padding: 15px;
+        border-radius: 8px;
+        box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.05);
+        overflow-x: auto;
+        margin-top: 10px;
+        font-family: "Times New Roman", Times, serif;
+        border-left: 4px solid #007bff;
+      }
 
-</head>
+      /* Dark Mode styles */
+      .theme-toggle {
+        cursor: pointer;
+        font-size: 1.5rem;
+      }
+      [data-bs-theme="dark"] {
+        background-color: #1a1a1a;
+        color: #e0e0e0;
+      }
+      [data-bs-theme="dark"] .card {
+        background-color: #2b2b2b;
+        color: #e0e0e0;
+      }
+      [data-bs-theme="dark"] h1,
+      [data-bs-theme="dark"] h2,
+      [data-bs-theme="dark"] h3 {
+        color: #f0f0f0;
+      }
+      [data-bs-theme="dark"] .step-card {
+        background-color: #3b3b3b;
+        border-color: #555;
+      }
+      [data-bs-theme="dark"] .info-box {
+        background-color: #1d3550;
+        border-color: #4a86d2;
+      }
+      [data-bs-theme="dark"] th,
+      [data-bs-theme="dark"] td {
+        border-color: #555;
+        background-color: #3b3b3b;
+      }
+      [data-bs-theme="dark"] thead tr {
+        background-color: #444;
+      }
+      [data-bs-theme="dark"] .final-result {
+        background-color: #284c31;
+        border-color: #3f7d4c;
+      }
+      [data-bs-theme="dark"] .math-block {
+        background-color: #333;
+        border-left-color: #007bff;
+      }
+      [data-bs-theme="dark"] .btn-primary {
+        background-color: #007bff;
+        border-color: #007bff;
+      }
+      [data-bs-theme="dark"] .btn-secondary {
+        background-color: #6c757d;
+        border-color: #6c757d;
+      }
+      .hidden {
+        display: none;
+      }
+      .nav-buttons {
+        display: flex;
+        justify-content: center;
+        gap: 15px;
+        margin-bottom: 20px;
+      }
+      .alert-message {
+        display: none;
+        padding: 15px;
+        margin-bottom: 20px;
+        border-radius: 8px;
+        background-color: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+      }
+      /* Force some rows to span the full width */
+      .full-width-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        margin-top: 1rem;
+      }
 
-<body>
-    <main class="py-5">
-        <div class="container">
+      /* Divider with caption */
+      .section-divider {
+        display: flex;
+        align-items: center;
+        text-align: center;
+        margin: 1.5rem 0 0.5rem;
+        color: #666;
+        font-size: 0.9rem;
+        font-style: italic;
+      }
 
-            <h1 class="text-center">Liar's Dice Probability Calculator</h1>
-            <p class="text-center">Analyze probabilities for your current turn, evaluate previous claims, and plan your
-                next move in Liar's Dice.</p>
-            <!-- About Button with Icon -->
-            <div class="text-center"><a href="about.html" class="btn btn-info">
-                    <i class="bi bi-info-circle"></i> About
-                </a></div><br>
-            <!-- Input Section -->
-            <div class="card mb-4">
-                <div class="card-body">
-                    <h3 class="card-title">Game Setup</h3>
-                    <form id="liarsDiceForm">
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label for="yourDice" class="form-label">Your Dice (comma-separated, e.g.,
-                                    1,2,4):</label>
-                                <input type="text" id="yourDice" class="form-control" placeholder="Enter your dice">
-                            </div>
-                            <div class="col-md-6">
-                                <label for="totalDice" class="form-label">Total Dice in Play:</label>
-                                <input type="number" id="totalDice" class="form-control" min="1"
-                                    placeholder="Enter total dice">
-                            </div>
-                        </div>
+      .section-divider::before,
+      .section-divider::after {
+        content: "";
+        flex: 1;
+        border-top: 1px solid #ccc;
+      }
 
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label for="prevClaimQuantity" class="form-label">Previous Claim Quantity:</label>
-                                <input type="number" id="prevClaimQuantity" class="form-control" min="1"
-                                    placeholder="Enter previous claim quantity">
-                            </div>
-                            <div class="col-md-6">
-                                <label for="prevClaimFace" class="form-label">Previous Claim Face:</label>
-                                <select id="prevClaimFace" class="form-select">
-                                    <option value="1">1</option>
-                                    <option value="2">2</option>
-                                    <option value="3">3</option>
-                                    <option value="4">4</option>
-                                    <option value="5">5</option>
-                                    <option value="6">6</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div>
-                            <label for="claimantDice">Claimant's Dice:</label>
-                            <input type="number" id="claimantDice" class="form-control" name="claimantDice" required>
-                        </div>
-                        <div class="form-check mb-3">
-                            <input class="form-check-input" type="checkbox" id="wildOnes" checked>
-                            <label class="form-check-label" for="wildOnes">1s are Wild</label>
-                        </div>
+      .section-divider span {
+        margin: 0 0.75rem;
+        white-space: nowrap;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1 class="mt-4 text-center">Liar's Dice Probability</h1>
 
-                        <div class="accordion mb-3" id="claimAccordion">
-                            <div class="accordion-item">
-                                <h2 class="accordion-header" id="headingOne">
-                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
-                                        data-bs-target="#addClaimCollapse" aria-expanded="false"
-                                        aria-controls="addClaimCollapse">
-                                        Add Your Claim
-                                    </button>
-                                </h2>
-                                <div id="addClaimCollapse" class="accordion-collapse collapse"
-                                    aria-labelledby="headingOne" data-bs-parent="#claimAccordion">
-                                    <div class="accordion-body">
-                                        <div class="row mb-3">
-                                            <div class="col-md-6">
-                                                <label for="yourClaimQuantity" class="form-label">Your Claim
-                                                    Quantity:</label>
-                                                <input type="number" id="yourClaimQuantity" class="form-control" min="1"
-                                                    placeholder="Enter your claim quantity">
-                                            </div>
-                                            <div class="col-md-6">
-                                                <label for="yourClaimFace" class="form-label">Your Claim Face:</label>
-                                                <select id="yourClaimFace" class="form-select">
-                                                    <option value="1">1</option>
-                                                    <option value="2">2</option>
-                                                    <option value="3">3</option>
-                                                    <option value="4">4</option>
-                                                    <option value="5">5</option>
-                                                    <option value="6">6</option>
-                                                </select>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+      <div class="nav-buttons">
+        <button id="showCalculator" class="btn btn-primary">
+          <i class="bi bi-calculator"></i> Calculator
+        </button>
+        <button id="showMath" class="btn btn-secondary">
+          <i class="bi bi-info-circle"></i> How the Math Works
+        </button>
+        <button id="showAbout" class="btn btn-secondary">
+          <i class="bi bi-info-circle"></i> About
+        </button>
+      </div>
 
-                        <button type="button" id="calculateBtn" class="btn btn-primary">Calculate</button>
-                    </form>
-                </div>
-            </div>
+      <!-- Game Setup Section -->
+      <div id="inputParamsCard" class="card">
+        <h2>🎲 Game Setup</h2>
+        <div id="alert-message" class="alert-message"></div>
 
-            <!-- Results Section -->
-            <div class="card mb-4">
-                <div class="card-body">
-                    <h3 class="card-title">Results</h3>
-
-                    <div id="results">
-
-                        <!-- Display the Default Probability -->
-                        <h4>Default Probability (without claimant's dice):</h4>
-                        <p id="defaultClaimProbability"></p>
-
-                        <!-- Display the Adjusted Probability -->
-                        <h4 id="claimantProbHeading">Adjusted Probability (with claimant's dice):</h4>
-                        <p id="adjustedClaimProbability"></p>
-
-                        <h4>Next Possible Moves:</h4>
-                        <table class="table table-bordered">
-                            <thead>
-                                <tr>
-                                    <th>Next Move</th>
-                                    <th>Probability</th>
-                                    <th id="claimantProbHeader">Probability with Assumption (Claimant's Dice)</th>
-                                </tr>
-                            </thead>
-                            <tbody id="nextMovesTable"></tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-
+        <div class="input-grid">
+          <!-- First row -->
+          <div>
+            <label for="totalDice">Total Dice in Play:</label>
+            <input type="number" id="totalDice" value="10" min="1" max="100" />
+          </div>
+          <div>
+            <label for="yourDice">Your Dice (e.g., 1,2,2,3):</label>
+            <input type="text" id="yourDice" value="1,2,2,3" />
+          </div>
         </div>
-    </main>
+
+        <!-- Force Previous Claim fields to full width row -->
+        <div class="input-grid full-width-row">
+          <div>
+            <label for="claimQuantity">Previous Claim Quantity:</label>
+            <input
+              type="number"
+              id="claimQuantity"
+              value="6"
+              min="1"
+              max="100"
+            />
+          </div>
+          <div>
+            <label for="claimFace">Previous Claim Face:</label>
+            <select id="claimFace">
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+              <option value="5">5</option>
+              <option value="6">6</option>
+            </select>
+          </div>
+          <div class="checkbox-container">
+            <label for="wildOnes">Wild 1s:</label>
+            <input type="checkbox" id="wildOnes" checked />
+          </div>
+        </div>
+        <div class="section-divider">
+          <span>For calculating adjusted probability</span>
+        </div>
+        <div class="input-grid">
+          <!-- Divider with caption -->
+          <div>
+            <label for="claimantDice">Claimant Dice:</label>
+            <input
+              type="number"
+              id="claimantDice"
+              value="3"
+              min="0"
+              max="100"
+            />
+          </div>
+          <div>
+            <label for="bluffRate"
+              >Bluff Rate (<span id="bluffRateValue">10</span>%):</label
+            >
+            <input
+              type="range"
+              id="bluffRate"
+              min="0"
+              max="1"
+              step="0.01"
+              value="0.1"
+            />
+          </div>
+        </div>
+      </div>
+
+      <!-- Calculator View -->
+      <div id="calculatorView">
+        <div class="card mb-4">
+          <div class="card-body">
+            <h3 class="card-title">Results</h3>
+            <div id="results">
+              <!-- Display the Default Probability -->
+              <h4 class="text-xl font-medium text-gray-700 mb-1">
+                Normal Probability (without claimant's dice):
+              </h4>
+              <p id="defaultClaimProbability" class="text-gray-600 mb-4"></p>
+
+              <!-- Display the Adjusted Probability -->
+              <h4 class="text-xl font-medium text-gray-700 mb-1">
+                Adjusted Probability (factoring in all claimant possibilities):
+              </h4>
+              <p
+                id="adjustedClaimProbabilitynew"
+                class="text-gray-600 mb-4"
+              ></p>
+
+              <!-- Next Possible Moves Table -->
+              <h4 class="text-xl font-medium text-gray-700 mb-4">
+                Next Possible Moves:
+              </h4>
+              <div class="overflow-x-auto">
+                <table class="w-full table-auto border-collapse">
+                  <thead>
+                    <tr class="bg-gray-200">
+                      <th
+                        class="px-4 py-2 text-left text-gray-700 font-medium rounded-tl-lg"
+                      >
+                        Next Move
+                      </th>
+                      <th class="px-4 py-2 text-left text-gray-700 font-medium">
+                        Normal Probability
+                      </th>
+                      <th
+                        class="px-4 py-2 text-left text-gray-700 font-medium rounded-tr-lg"
+                      >
+                        Adjusted Probability
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody id="nextMovesTable"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- How the Math Works View -->
+      <div id="mathView" class="hidden">
+        <div class="card">
+          <h2>📈 How the Math Works</h2>
+          <p>Learn about the probability calculations behind the tool.</p>
+        </div>
+
+        <!-- Normal Probability Section -->
+        <div class="card">
+          <h2>Normal Probability</h2>
+          <p>
+            The normal probability is the chance a claim is true based on all
+            unknown dice in the game, treating them as a single random pool. It
+            doesn't consider the claimant's hand or bluffing.
+          </p>
+
+          <!-- Step 1 -->
+          <div class="step-card">
+            <h3>1️⃣ Count Your Contribution</h3>
+            <p>
+              First, we count how many dice in your hand contribute to the
+              claim. Ones are wild and count as any number.
+            </p>
+            <div id="normal-step-1-info" class="info-box"></div>
+          </div>
+
+          <!-- Step 2 -->
+          <div class="step-card">
+            <h3>2️⃣ Determine the Unknown Dice Pool</h3>
+            <p>
+              Next, we calculate the total number of dice that are unknown to
+              you. This includes the dice held by all other players. We also
+              determine the remaining needed dice to meet the claim.
+            </p>
+            <div id="normal-step-2-info-1" class="info-box mb-2"></div>
+            <div id="normal-step-2-info-2" class="info-box"></div>
+          </div>
+
+          <!-- Step 3 -->
+          <div class="step-card">
+            <h3>3️⃣ Calculate Binomial Probabilities</h3>
+            <p>
+              We use the binomial formula to find the probability of getting
+              exactly the required number of dice (or more) from the unknown
+              pool.
+            </p>
+            <div class="math-block">
+              <p><strong>Generic Formula:</strong></p>
+              <div id="normalFormulaGeneric"></div>
+            </div>
+            <div class="math-block">
+              <p><strong>Example:</strong></p>
+              <div id="normalFormulaExample"></div>
+            </div>
+            <div class="table-container">
+              <table id="normalTable">
+                <thead>
+                  <tr>
+                    <th>\(k\)</th>
+                    <th>Formula</th>
+                    <th>Value</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Step 4 -->
+          <div class="step-card">
+            <h3>4️⃣ Final Probability</h3>
+            <p>
+              Finally, we sum the probabilities of getting exactly the number of
+              matches we need and all higher possibilities.
+            </p>
+            <div class="final-result" id="finalNormalProbability"></div>
+          </div>
+        </div>
+
+        <!-- Adjusted Probability Section -->
+        <div class="card">
+          <h2>Adjusted Probability (Bayesian)</h2>
+          <p>
+            The adjusted probability is a more sophisticated calculation that
+            factors in the claimant's dice and a bluffing model using Bayesian
+            inference. It's the probability the claim is true,
+            <i>given that the claimant made it</i>.
+          </p>
+
+          <!-- Step 1 -->
+          <div class="step-card">
+            <h3>1️⃣ Count Your Dice</h3>
+            <p>
+              Look at your dice and count how many show the claimed number. Ones
+              are wild and count as any number. The remaining needed dice must
+              come from other players.
+            </p>
+            <div id="adj-step-1-info" class="info-box"></div>
+          </div>
+
+          <!-- Step 2 -->
+          <div class="step-card">
+            <h3>2️⃣ Calculate Prior Probabilities (Binomial)</h3>
+            <p>
+              We calculate the probability each possible number of claimant dice
+              contribute to the claim using the binomial formula. The example
+              table below shows the probabilities for \(k = 0\) to
+              <span id="adj-step2-n"></span> matches from the claimant's dice.
+            </p>
+            <div class="math-block">
+              <p><strong>Generic Formula:</strong></p>
+              <div id="priorFormulaGeneric"></div>
+            </div>
+            <div class="table-container">
+              <table id="priorTable">
+                <thead>
+                  <tr>
+                    <th>\(k\)</th>
+                    <th>Formula</th>
+                    <th>Value</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Step 3 -->
+          <div class="step-card">
+            <h3>3️⃣ Account for Bluffing with Bayes' Theorem</h3>
+            <p>
+              The claim might be exaggerated. We estimate the probability of the
+              claim being made given a certain number of matches \(K\) a player
+              holds, considering a fixed bluff rate.
+            </p>
+            <div class="info-box">
+              <p id="adj-step3-threshold" class="font-bold"></p>
+            </div>
+            <p id="adj-step3-info-p-claim" class="mt-2 text-sm text-gray-600">
+              This is based on the formula: \(P(\text{claim} | K=k) = 1.0\) if
+              \(k \ge \text{threshold}\), else bluffRate.
+            </p>
+          </div>
+
+          <!-- Step 4 -->
+          <div class="step-card">
+            <h3>4️⃣ Calculate Posterior Probabilities</h3>
+            <p>
+              We use Bayes' Theorem to adjust the prior probabilities based on
+              the fact that a claim was made. This gives us a new probability
+              distribution for the number of matches the claimant holds, called
+              the posterior probability. The formula is:
+            </p>
+            <div class="math-block">
+              <p><strong>Generic Formula:</strong></p>
+              <div id="posteriorFormulaGeneric"></div>
+            </div>
+            <div class="table-container">
+              <table id="posteriorTable">
+                <thead>
+                  <tr>
+                    <th>\(k\)</th>
+                    <th>Formula</th>
+                    <th>Value</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Step 5 -->
+          <div class="step-card">
+            <h3>5️⃣ Calculate Probability Claim is True</h3>
+            <p>
+              For each possible number of matches the claimant holds (\(K\)), we
+              calculate the probability that the remaining unknown dice satisfy
+              the claim. We use a binomial tail sum for this.
+            </p>
+            <div class="math-block">
+              <p><strong>Generic Formula:</strong></p>
+              <div id="adj-step5-formula-generic"></div>
+            </div>
+            <div class="table-container">
+              <table id="adj-prob-true-table">
+                <thead>
+                  <tr>
+                    <th>\(k\)</th>
+                    <th>Formula</th>
+                    <th>Value</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Step 6 -->
+          <div class="step-card">
+            <h3>6️⃣ Final Adjusted Probability</h3>
+            <p>
+              Finally, we multiply the posterior probabilities by the
+              probability the claim is true for each \(K\) and sum them up. This
+              is the final adjusted probability the claim is likely true,
+              considering both dice probability and bluffing.
+            </p>
+            <div class="math-block">
+              <p><strong>Generic Formula:</strong></p>
+              <div id="finalAdjFormulaGeneric"></div>
+            </div>
+            <div class="table-container">
+              <table id="finalAdjTable">
+                <thead>
+                  <tr>
+                    <th>\(k\)</th>
+                    <th>Posterior</th>
+                    <th>\(P(\\text{true}|k)\)</th>
+                    <th>Weighted Product</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+            <div class="final-result" id="finalAdjustedProbability"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- About View -->
+      <div id="aboutView" class="hidden">
+        <h1 class="mt-4 text-center">About This Tool</h1>
+        <p>
+          This <strong>Liar’s Dice Probability Calculator</strong> helps players
+          analyze probabilities to make better decisions. Liar’s Dice is a game
+          of skill, psychology, and probability. While intuition plays a big
+          role, understanding the math behind the game can give you a sharper
+          edge.
+        </p>
+
+        <h3>Benefits of Using This Tool</h3>
+        <ul>
+          <li>
+            Make <strong>more accurate calls</strong> on whether to challenge a
+            claim.
+          </li>
+          <li>
+            Improve your <strong>bluffing strategies</strong> by estimating
+            plausible claims.
+          </li>
+          <li>
+            Learn how probability impacts decision-making in hidden information
+            games.
+          </li>
+        </ul>
+
+        <p>
+          Try it out, refine your gameplay, and take your
+          <strong>Liar’s Dice strategy</strong> to the next level!
+        </p>
+
+        <h2>How to Use It</h2>
+        <ul>
+          <li>
+            <strong>Enter Your Dice</strong> – Input your dice as
+            comma-separated numbers (e.g., <code>1,2,3</code>).
+          </li>
+          <li>
+            <strong>Enter Total Dice in Play</strong> – The total number of dice
+            still in the game.
+          </li>
+          <li>
+            <strong>Enter the Previous Claim</strong> – The quantity and face
+            value of the last claim.
+          </li>
+          <li>
+            <strong>Enter the Claimant’s Dice Count</strong> – How many dice the
+            claimant has.
+          </li>
+          <li>
+            <strong>Select if 1s are Wild</strong> – If enabled, 1s count as any
+            number.
+          </li>
+        </ul>
+      </div>
+    </div>
+
     <!-- Footer -->
-    <footer class="bg-white border-top py-4 mt-auto">
-        <div class="container">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    Made by <a href="https://www.kylescheer.com" target="_blank">Kyle Scheer</a>
-                </div>
-                <a href="https://github.com/kyletscheer/liars-dice/" target="_blank">View Code</a>
-                <!-- Theme toggle moved outside collapse -->
-                <div class="theme-toggle" id="themeToggle" role="button" aria-label="Toggle theme">
-                    <i class="bi bi-sun-fill"></i>
-                </div>
-            </div>
+    <footer class="border-top py-4 mt-auto">
+      <div class="container">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            Made by
+            <a href="https://www.kylescheer.com" target="_blank">Kyle Scheer</a>
+          </div>
+          <a href="https://github.com/kyletscheer/liars-dice/" target="_blank"
+            >View Code</a
+          >
+          <!-- Theme toggle moved outside collapse -->
+          <div
+            class="theme-toggle"
+            id="themeToggle"
+            role="button"
+            aria-label="Toggle theme"
+          >
+            <i class="bi bi-sun-fill"></i>
+          </div>
         </div>
+      </div>
     </footer>
 
-    <!-- Bootstrap Bundle with Popper -->
-    <script src="darkmode.js"></script>
-    <script>
-        // Calculate Probability Without Claimant Dice (Default)
-        function calculateProbabilityWithoutClaimant(quantity, face, yourDice, totalDice, wildOnes) {
-            console.log(`WITHOUT CLAIMANT Inputs: Quantity Claimed = ${quantity}, Face = ${face}, Your Dice = ${yourDice}, Total Dice = ${totalDice}, Wild Ones = ${wildOnes}`);
-            const remainingDice = totalDice - yourDice.length;
-            console.log(`Remaining Unseen Dice: ${remainingDice}`);
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>// --- Core Math Functions ---
+// A more efficient way to calculate binomial coefficients without recursion.
+function binomialCoefficient(n, k) {
+    if (k < 0 || k > n) return 0;
+    if (k === 0 || k === n) return 1;
+    if (k > n / 2) k = n - k;
+    let res = 1;
+    for (let i = 1; i <= k; ++i) {
+        res = res * (n - i + 1) / i;
+    }
+    return res;
+}
 
-            const yourContribution = yourDice.filter(die => die === face || (wildOnes && die === 1 && face !== 1)).length;
-            console.log(`Your Contribution: ${yourContribution}`);
+// Calculates the "at least k" probability for a binomial distribution.
+function binomialTail(n, p, k) {
+    if (k <= 0) return 1.0;
+    if (k > n) return 0.0;
+    let sum = 0.0;
+    for (let i = k; i <= n; i++) {
+        sum += binomialCoefficient(n, i) * Math.pow(p, i) * Math.pow(1.0 - p, n - i);
+    }
+    return sum;
+}
 
-            const remainingClaim = Math.max(0, quantity - yourContribution);
-            console.log(`Remaining Claim Needed from Unseen Dice: ${remainingClaim}`);
+// --- Main Probability Calculation Functions ---
+// Calculates the simple, unadjusted probability of a claim being true.
+// This assumes no information about the claimant's hand.
+function calculateNormalProbability(quantity, face, yourDice, totalDice, wildOnes) {
+    const p = wildOnes && face !== 1 ? 2.0 / 6.0 : 1.0 / 6.0;
+    const yourContribution = yourDice.filter(die => die === face || (wildOnes && die === 1 && face !== 1)).length;
+    const remainingDice = totalDice - yourDice.length;
+    const requiredCount = Math.max(0, quantity - yourContribution);
+    const result = binomialTail(remainingDice, p, requiredCount);
+    return {
+        probability: result,
+        yourContribution: yourContribution,
+        requiredCount: requiredCount,
+        remainingDice: remainingDice,
+        p: p
+    };
+}
 
-            if (remainingClaim === 0) {
-                console.log("Claim already fulfilled. Probability is 100%");
-                return 1; // Guaranteed if your dice fulfill the claim.
-            }
+// The core Bayesian calculation. This function models the probability
+// of a claim being true, given a specific claimant's claim and a bluff rate.
+function adjustedProbabilityJS({
+    totalDice,
+    yourDice,
+    claimantDice,
+    claimQuantity,
+    claimFace,
+    wildOnes,
+    bluffRate
+}) {
+    const p = wildOnes && claimFace !== 1 ? 2.0 / 6.0 : 1.0 / 6.0;
+    const yourContribution = yourDice.filter(d => d === claimFace || (wildOnes && d === 1 && claimFace !== 1)).length;
+    const unknownDiceTotal = totalDice - yourDice.length;
+    const restDice = unknownDiceTotal - claimantDice;
+    const R = Math.max(0, claimQuantity - yourContribution);
+    const threshold = Math.floor(claimantDice * p);
+    
+    // Step 1: Calculate the prior probability of each possible hand for the claimant.
+    let priorProbs = [];
+    for (let k = 0; k <= claimantDice; k++) {
+        priorProbs.push(binomialCoefficient(claimantDice, k) * Math.pow(p, k) * Math.pow(1.0 - p, claimantDice - k));
+    }
+    
+    // Step 2: Calculate the probability of the claim, given each possible hand (with bluffing).
+    const pClaimGivenK = priorProbs.map((_, k) => k >= threshold ? 1.0 : bluffRate);
+    const combinedProbs = priorProbs.map((prob, i) => prob * pClaimGivenK[i]);
+    const PClaim = combinedProbs.reduce((acc, val) => acc + val, 0);
+    
+    // Step 3: Calculate the posterior probability of each hand, given the claim.
+    const posteriorProbs = combinedProbs.map(prob => prob / PClaim);
+    
+    // Step 4: Calculate the probability of the claim being true, given each possible hand.
+    let probTrueGivenK = [];
+    for (let k = 0; k <= claimantDice; k++) {
+        const need = Math.max(0, R - k);
+        probTrueGivenK.push(binomialTail(restDice, p, need));
+    }
+    
+    // Step 5: Combine the posterior and "true" probabilities to get the final adjusted probability.
+    const finalWeightedProbs = posteriorProbs.map((prob, i) => prob * probTrueGivenK[i]);
+    const totalProb = finalWeightedProbs.reduce((acc, val) => acc + val, 0);
 
-            const p = wildOnes && face !== 1 ? 2 / 6 : 1 / 6;
-            let probability = 0;
-            for (let i = remainingClaim; i <= remainingDice; i++) {
-                probability += (factorial(remainingDice) / (factorial(i) * factorial(remainingDice - i))) * Math.pow(p, i) * Math.pow(1 - p, remainingDice - i);
-
-            }
-            console.log(`Final Probability: ${probability}`);
-
-            return probability;
-        }
-
-        // Calculate Probability With Claimant Dice
-        function calculateProbabilityWithClaimant(quantity, face, yourDice, totalDice, wildOnes, claimantDice, previousClaimFace) {
-            console.log(`WITH CLAIMANT Inputs: Quantity Claimed = ${quantity}, Face = ${face}, Your Dice = ${yourDice}, Total Dice = ${totalDice}, Claimant Dice = ${claimantDice}, Wild Ones = ${wildOnes}`);
-
-            const yourContribution = yourDice.filter(die => die === face || (wildOnes && die === 1 && face !== 1)).length;
-            console.log(`Your Contribution: ${yourContribution}`);
-
-            const p = wildOnes && face !== 1 ? 2 / 6 : 1 / 6;
-            const estimatedClaimantContribution = Math.floor(claimantDice * p);
-            console.log(`Claimant Estimated Contribution: ${estimatedClaimantContribution}`);
-
-            let sameAsClaim = 0;
-            if (face === previousClaimFace) {
-                sameAsClaim = estimatedClaimantContribution;
-            }
-            console.log(`sameAsClaim: ${sameAsClaim}`);
-            const remainingDice = totalDice - yourDice.length - estimatedClaimantContribution;
-            console.log(`Remaining Unseen Dice: ${remainingDice}`);
-
-            const remainingClaim = Math.max(0, quantity - (yourContribution + sameAsClaim));
-            console.log(`Remaining Claim Needed from Unseen Dice: ${remainingClaim}`);
-
-            if (remainingClaim > remainingDice) {
-                console.log("Impossible claim. Probability is 0%");
-                return 0;
-            }
-
-            if (remainingClaim === 0) {
-                console.log("Claim already fulfilled. Probability is 100%");
-                return 1;
-            }
-
-            let probability = 0;
-            for (let i = remainingClaim; i <= remainingDice; i++) {
-                probability += (factorial(remainingDice) / (factorial(i) * factorial(remainingDice - i))) *
-                    Math.pow(p, i) * Math.pow(1 - p, remainingDice - i);
-            }
-
-            console.log(`Final Probability: ${probability}`);
-            return probability;
-        }
-
-
-
-        // Event Listener for Calculation
-        document.getElementById('calculateBtn').addEventListener('click', () => {
-            const yourDiceInput = document.getElementById('yourDice').value.trim().split(',').map(Number);
-            const totalDice = parseInt(document.getElementById('totalDice').value);
-            const prevClaimQuantity = parseInt(document.getElementById('prevClaimQuantity').value);
-            const prevClaimFace = parseInt(document.getElementById('prevClaimFace').value);
-
-            // Ensure Wild Ones is a boolean (checked or unchecked)
-            const wildOnes = document.getElementById('wildOnes').checked;
-
-            // Adjust Claimant Dice to be a number
-            const claimantDice = parseInt(document.getElementById('claimantDice').value);
-            const estimatedClaimantContribution = Math.floor(claimantDice * (wildOnes && prevClaimFace !== 1 ? 2 / 6 : 1 / 6));
-
-            // Validate Your Dice: Only 1-6, comma-separated
-            const validDicePattern = /^([1-6](,[1-6])*)?$/;
-            if (!validDicePattern.test(yourDiceInput)) {
-                alert("Invalid dice input! Enter numbers between 1 and 6, separated by commas.");
-                return;
-            }
-
-            // Validate Total Dice
-            if (isNaN(totalDice) || totalDice < 1) {
-                alert("Total Dice must be a positive number.");
-                return;
-            }
-
-            // Validate Previous Claim Quantity
-            if (isNaN(prevClaimQuantity) || prevClaimQuantity < 1) {
-                alert("Previous Claim Quantity must be at least 1.");
-                return;
-            }
-
-            // Validate Claimant's Dice
-            if (isNaN(claimantDice) || claimantDice < 1) {
-                alert("Claimant's Dice must be 1 or greater.");
-                return;
-            }
-
-            // Ensure sum of Your Dice and Claimant Dice does not exceed Total Dice
-            if (yourDiceInput.length + claimantDice > totalDice) {
-                alert("Your Dice and Claimant Dice together cannot exceed the total number of dice in play.");
-                return;
-            }
-
-            // Update table header and heading dynamically
-            document.getElementById('claimantProbHeader').innerText = `Probability if claimant has estimated ${estimatedClaimantContribution} of ${prevClaimFace}s`;
-            document.getElementById('claimantProbHeading').innerText = `Probability if claimant has estimated ${estimatedClaimantContribution} of ${prevClaimFace}s:`;
+    return {
+        probability: totalProb,
+        yourContribution: yourContribution,
+        requiredCount: R,
+        p: p,
+        threshold: threshold,
+        priorProbs: priorProbs,
+        pClaimGivenK: pClaimGivenK,
+        combinedProbs: combinedProbs,
+        posteriorProbs: posteriorProbs,
+        probTrueGivenK: probTrueGivenK,
+        finalWeightedProbs: finalWeightedProbs,
+        PClaim: PClaim,
+        claimantDice: claimantDice,
+        restDice: restDice
+    };
+}
 
 
-            // Default Calculation: Without considering claimant's dice
-            const defaultProb = calculateProbabilityWithoutClaimant(prevClaimQuantity, prevClaimFace, yourDiceInput, totalDice, wildOnes);
-            document.getElementById('defaultClaimProbability').innerText = `Default Probability: ${(defaultProb * 100).toFixed(2)}%`;
+// --- DOM and Event Handling ---
+// Helper to display in-page messages
+function showMessage(message) {
+    const messageBox = document.getElementById('alert-message');
+    if (messageBox) {
+        messageBox.innerText = message;
+        messageBox.style.display = 'block';
+    }
+}
 
-            // Adjusted Calculation: Considering claimant's dice
-            const adjustedProb = calculateProbabilityWithClaimant(prevClaimQuantity, prevClaimFace, yourDiceInput, totalDice, wildOnes, claimantDice, prevClaimFace);
-            const adjustedProbText = `Probability if claimant has ${estimatedClaimantContribution} of ${prevClaimFace}s: ${(adjustedProb * 100).toFixed(2)}%`;
-            document.getElementById('adjustedClaimProbability').innerText = adjustedProbText;
+// Main function to update all probability views and tables
+function updateAllViews() {
+    // Get all user input values
+    const totalDice = parseInt(document.getElementById('totalDice').value);
+    const yourDiceStr = document.getElementById('yourDice').value;
+    const yourDice = yourDiceStr.split(',').map(d => parseInt(d.trim())).filter(d => !isNaN(d));
+    const prevClaimQuantity = parseInt(document.getElementById('claimQuantity').value);
+    const prevClaimFace = parseInt(document.getElementById('claimFace').value);
+    const claimantDice = parseInt(document.getElementById('claimantDice').value);
+    const bluffRate = parseFloat(document.getElementById('bluffRate').value);
+    const wildOnes = document.getElementById('wildOnes').checked;
 
-            // Display Results in the Table
-            const nextMovesTable = document.getElementById('nextMovesTable');
-            nextMovesTable.innerHTML = '';
-            for (let i = prevClaimQuantity; i <= prevClaimQuantity + 2; i++) {
-                for (let j = 1; j <= 6; j++) {
-                    if (i === prevClaimQuantity && j <= prevClaimFace) continue; // Skip invalid moves.
+    // Update bluff rate value display
+    const bluffRateValueElement = document.getElementById('bluffRateValue');
+    if(bluffRateValueElement) bluffRateValueElement.innerText = `${Math.round(bluffRate * 100)}`;
 
-                    const probWithoutClaimant = calculateProbabilityWithoutClaimant(i, j, yourDiceInput, totalDice, wildOnes);
-                    const probWithClaimant = calculateProbabilityWithClaimant(i, j, yourDiceInput, totalDice, wildOnes, claimantDice, prevClaimFace);
+    // Validation and error handling
+    const validDicePattern = /^(\s*[1-6]\s*(,\s*[1-6]\s*)*)?$/;
+    if (!validDicePattern.test(yourDiceStr)) {
+        showMessage("Invalid dice input! Enter numbers between 1 and 6, separated by commas.");
+        return;
+    }
+    if (isNaN(totalDice) || totalDice < 1) {
+        showMessage("Total Dice must be a positive number.");
+        return;
+    }
+    if (isNaN(prevClaimQuantity) || prevClaimQuantity < 1) {
+        showMessage("Previous Claim Quantity must be at least 1.");
+        return;
+    }
+    if (isNaN(claimantDice) || claimantDice < 1) {
+        showMessage("Claimant's Dice must be 1 or greater.");
+        return;
+    }
+    if (yourDice.length + claimantDice > totalDice) {
+        showMessage("Your Dice and Claimant Dice together cannot exceed the total number of dice in play.");
+        return;
+    }
+    document.getElementById('alert-message').style.display = 'none';
 
-                    nextMovesTable.innerHTML += `
-                <tr>
-                    <td>${i} ${j}s</td>
-                    <td>${(probWithoutClaimant * 100).toFixed(2)}%</td>
-                    <td>${(probWithClaimant * 100).toFixed(2)}%</td>
-                </tr>
-            `;
+    // Calculator View updates
+    const defaultProb = calculateNormalProbability(prevClaimQuantity, prevClaimFace, yourDice, totalDice, wildOnes).probability;
+    document.getElementById('defaultClaimProbability').innerText = `${(defaultProb * 100).toFixed(2)}%`;
+
+    const adjustedProbnew = adjustedProbabilityJS({
+        totalDice: totalDice, 
+        yourDice: yourDice, 
+        claimantDice: claimantDice, 
+        claimQuantity: prevClaimQuantity, 
+        claimFace: prevClaimFace, 
+        wildOnes: wildOnes, 
+        bluffRate: bluffRate
+    }).probability;
+    document.getElementById('adjustedClaimProbabilitynew').innerText = `${(adjustedProbnew * 100).toFixed(2)}%`;
+
+    const nextMovesTable = document.getElementById('nextMovesTable');
+    if (nextMovesTable) {
+        nextMovesTable.innerHTML = '';
+        for (let i = prevClaimQuantity; i <= totalDice; i++) {
+            for (let j = 1; j <= 6; j++) {
+                if (i === prevClaimQuantity && j <= prevClaimFace) continue;
+                
+                const probWithoutClaimant = calculateNormalProbability(i, j, yourDice, totalDice, wildOnes).probability;
+                let probWithClaimant = 0;
+
+                const isSameFace = (j === prevClaimFace || (wildOnes && j === 1 && prevClaimFace !== 1));
+                
+                if (isSameFace) {
+                    // For the same claimed face, use the full Bayesian calculation with the standard bluff rate.
+                    probWithClaimant = adjustedProbabilityJS({
+                        totalDice: totalDice,
+                        yourDice: yourDice,
+                        claimantDice: claimantDice,
+                        claimQuantity: i,
+                        claimFace: j,
+                        wildOnes: wildOnes,
+                        bluffRate: bluffRate
+                    }).probability;
+                } else {
+                    // For a different face, we model the lowered probability due to symmetry.
+                    // A simple linear scaling of the normal probability is a robust proxy for this.
+                    probWithClaimant = probWithoutClaimant * (1 - bluffRate * 0.5); 
                 }
+                
+                nextMovesTable.innerHTML += `
+                    <tr>
+                        <td>${i} x ${j}'s</td>
+                        <td>${(probWithoutClaimant * 100).toFixed(2)}%</td>
+                        <td>${(probWithClaimant * 100).toFixed(2)}%</td>
+                    </tr>
+                `;
             }
-        });
-
-
-        function factorial(n) {
-            if (n === 0 || n === 1) return 1;
-            return n * factorial(n - 1);
         }
-    </script>
-</body>
+    }
+    
+    // Math View updates
+    const normalProb = calculateNormalProbability(prevClaimQuantity, prevClaimFace, yourDice, totalDice, wildOnes);
+    const adjustedProb = adjustedProbabilityJS({
+        totalDice: totalDice, 
+        yourDice: yourDice, 
+        claimantDice: claimantDice, 
+        claimQuantity: prevClaimQuantity, 
+        claimFace: prevClaimFace, 
+        wildOnes: wildOnes, 
+        bluffRate: bluffRate
+    });
 
+    const normalStep1Info = document.getElementById('normal-step-1-info');
+    if (normalStep1Info) normalStep1Info.innerHTML = `You have <span class="font-bold">${yourDice.join(', ')}</span>. For a claim of <span class="font-bold">${prevClaimFace}s</span> with Wild 1s, you contribute <span class="font-bold">${normalProb.yourContribution}</span> dice.`;
+    const normalStep2Info1 = document.getElementById('normal-step-2-info-1');
+    if (normalStep2Info1) normalStep2Info1.innerHTML = `Unknown dice = Total Dice - Your Dice = ${totalDice} - ${yourDice.length} = <span class="font-bold">${normalProb.remainingDice}</span>`;
+    const normalStep2Info2 = document.getElementById('normal-step-2-info-2');
+    if (normalStep2Info2) normalStep2Info2.innerHTML = `Remaining needed = Claim - Your Contribution = ${prevClaimQuantity} - ${normalProb.yourContribution} = <span class="font-bold">${normalProb.requiredCount}</span>`;
+
+    updateMathBlock('normalFormulaGeneric', `\\[ P(K\\ge k) = \\sum_{i=k}^{n} \\binom{n}{i} p^i (1-p)^{n-i} \\]
+                                                where: \\(n\\) is total unknown dice, \\(k\\) is required count, and \\(p\\) is probability of a match.`);
+    updateMathBlock('normalFormulaExample', `\\[ P(K\\ge ${normalProb.requiredCount}) = \\sum_{i=${normalProb.requiredCount}}^{${normalProb.remainingDice}} \\binom{${normalProb.remainingDice}}{i} (${normalProb.p.toFixed(3)})^i (${(1-normalProb.p).toFixed(3)})^{${normalProb.remainingDice} - i} \\]`);
+    updateNormalTable('normalTable', normalProb.remainingDice, normalProb.requiredCount, normalProb.p);
+    const finalNormalProbability = document.getElementById('finalNormalProbability');
+    if (finalNormalProbability) finalNormalProbability.innerText = `✅ Final Normal Probability: ${(normalProb.probability * 100).toFixed(2)}%`;
+    
+    const adjStep1Info = document.getElementById('adj-step-1-info');
+    if (adjStep1Info) adjStep1Info.innerHTML = `You have <span class="font-bold">${yourDice.join(', ')}</span>. With wild 1s, you contribute <span class="font-bold">${adjustedProb.yourContribution}</span> to the claim of ${prevClaimQuantity} ${prevClaimFace}'s. Remaining needed from other players: <span class="font-bold">${adjustedProb.requiredCount}</span>.`;
+    
+    const adjStep2NElement = document.getElementById('adj-step2-n');
+    if (adjStep2NElement) {
+        adjStep2NElement.innerText = adjustedProb.claimantDice;
+    }
+    
+    updateMathBlock('priorFormulaGeneric', `\\[ P(K=k) = \\binom{n_c}{k} p^k (1-p)^{n_c-k} \\]
+                                                where: \\(n_c\\) is claimant's dice, \\(k\\) is matches, and \\(p\\) is match probability.`);
+    updatePriorTable('priorTable', adjustedProb);
+    
+    const adjStep3Threshold = document.getElementById('adj-step3-threshold');
+    if (adjStep3Threshold) {
+        adjStep3Threshold.innerHTML = `Expected Matches \\(E[K] = n_c \\cdot p = ${adjustedProb.claimantDice} \\cdot ${adjustedProb.p.toFixed(3)} = ${(adjustedProb.claimantDice * adjustedProb.p).toFixed(2)}\\). The bluffing threshold is \\(\\lfloor E[K] \\rfloor = \\lfloor ${(adjustedProb.claimantDice * adjustedProb.p).toFixed(2)} \\rfloor = ${adjustedProb.threshold}.\\)`;
+    }
+    updateMathBlock('posteriorFormulaGeneric', `\\[ P(K=k | \\text{claim}) = \\frac{P(\\text{claim}|K=k) \\cdot P(K=k)}{P(\\text{claim})} \\]`);
+    updatePosteriorTable('posteriorTable', adjustedProb);
+    
+    updateMathBlock('adj-step5-formula-generic', `\\[ P(\\text{claim true}|K=k) = \\sum_{j=R-k}^{n_u} \\binom{n_u}{j} p^j (1-p)^{n_u - j} \\]
+                                                where: \\(n_u\\) is remaining unknown dice, \\(R\\) is remaining matches needed from other players.`);
+    updateProbTrueTable('adj-prob-true-table', adjustedProb);
+    
+    updateMathBlock('finalAdjFormulaGeneric', `\\[ \\text{Adjusted Probability} = \\sum_{k=0}^{n_c} P(K=k | \\text{claim}) \\cdot P(\\text{claim true} | K=k) \\]`);
+    updateFinalAdjTable('finalAdjTable', adjustedProb);
+    const finalAdjustedProbability = document.getElementById('finalAdjustedProbability');
+    if (finalAdjustedProbability) finalAdjustedProbability.innerText = `✅ Final Adjusted Probability: ${(adjustedProb.probability * 100).toFixed(2)}%`;
+    
+    if (window.MathJax) {
+        window.MathJax.typesetPromise();
+    }
+}
+
+// Helper to update the MathJax blocks
+function updateMathBlock(blockId, formula) {
+    const block = document.getElementById(blockId);
+    if (block) block.innerHTML = formula;
+}
+
+function updateNormalTable(tableId, n, startK, p) {
+    const tableBody = document.querySelector(`#${tableId} tbody`);
+    if (!tableBody) return;
+    tableBody.innerHTML = '';
+    for (let k = startK; k <= n; k++) {
+        const term = binomialCoefficient(n, k) * Math.pow(p, k) * Math.pow(1 - p, n - k);
+        const formula = `\\binom{${n}}{${k}} \\cdot (${p.toFixed(3)})^{${k}} \\cdot (${(1-p).toFixed(3)})^{${n} - ${k}}`;
+        
+        const row = tableBody.insertRow();
+        row.insertCell(0).innerHTML = `\\(${k}\\)`;
+        const formulaCell = row.insertCell(1);
+        formulaCell.innerHTML = `\\[${formula}\\]`;
+        row.insertCell(2).innerText = term.toFixed(5);
+    }
+}
+
+function updatePriorTable(tableId, data) {
+    const priorTableBody = document.querySelector(`#${tableId} tbody`);
+    if (!priorTableBody) return;
+    priorTableBody.innerHTML = '';
+    for (let i = 0; i < data.priorProbs.length; i++) {
+        const row = priorTableBody.insertRow();
+        row.insertCell(0).innerHTML = `\\(${i}\\)`;
+        const formula = `\\binom{${data.claimantDice}}{${i}} \\cdot (${data.p.toFixed(3)})^{${i}} \\cdot (${(1 - data.p).toFixed(3)})^{${data.claimantDice} - ${i}}`;
+        const formulaCell = row.insertCell(1);
+        formulaCell.innerHTML = `\\[${formula}\\]`;
+        row.insertCell(2).innerText = data.priorProbs[i].toFixed(3);
+    }
+}
+
+function updatePosteriorTable(tableId, data) {
+    const posteriorTableBody = document.querySelector(`#${tableId} tbody`);
+    if (!posteriorTableBody) return;
+    posteriorTableBody.innerHTML = '';
+    for (let i = 0; i < data.posteriorProbs.length; i++) {
+        const row = posteriorTableBody.insertRow();
+        row.insertCell(0).innerHTML = `\\(${i}\\)`;
+        const formula = `\\frac{${(data.priorProbs[i] * data.pClaimGivenK[i]).toFixed(3)}}{${data.PClaim.toFixed(3)}}`;
+        const formulaCell = row.insertCell(1);
+        formulaCell.innerHTML = `\\[${formula}\\]`;
+        row.insertCell(2).innerText = data.posteriorProbs[i].toFixed(3);
+    }
+}
+
+function updateProbTrueTable(tableId, data) {
+    const adjProbTrueTableBody = document.querySelector(`#${tableId} tbody`);
+    if (!adjProbTrueTableBody) return;
+    adjProbTrueTableBody.innerHTML = '';
+    for (let i = 0; i < data.probTrueGivenK.length; i++) {
+        const row = adjProbTrueTableBody.insertRow();
+        row.insertCell(0).innerHTML = `\\(${i}\\)`;
+        const needed = Math.max(0, data.requiredCount - i);
+        const formula = (i >= data.requiredCount) ? "1.0" : `\\sum_{j=${needed}}^{${data.restDice}} \\binom{${data.restDice}}{j} (${data.p.toFixed(3)})^j (${(1 - data.p).toFixed(3)})^{${data.restDice}-j}`;
+        const formulaCell = row.insertCell(1);
+        formulaCell.innerHTML = `\\[${formula}\\]`;
+        row.insertCell(2).innerText = data.probTrueGivenK[i].toFixed(3);
+    }
+}
+
+function updateFinalAdjTable(tableId, data) {
+    const finalAdjTableBody = document.querySelector(`#${tableId} tbody`);
+    if (!finalAdjTableBody) return;
+    finalAdjTableBody.innerHTML = '';
+    for (let i = 0; i < data.finalWeightedProbs.length; i++) {
+        const row = finalAdjTableBody.insertRow();
+        row.insertCell(0).innerHTML = `\\(${i}\\)`;
+        row.insertCell(1).innerText = data.posteriorProbs[i].toFixed(3);
+        row.insertCell(2).innerText = data.probTrueGivenK[i].toFixed(3);
+        row.insertCell(3).innerText = data.finalWeightedProbs[i].toFixed(3);
+    }
+}
+
+// --- View Switching and Initial Call ---
+// Hook up the buttons to switchView
+document.getElementById("showCalculator").addEventListener("click", () => switchView("calculatorView"));
+document.getElementById("showMath").addEventListener("click", () => switchView("mathView"));
+document.getElementById("showAbout").addEventListener("click", () => switchView("aboutView"));
+
+function switchView(viewId) {
+    const views = ['calculatorView', 'mathView', 'aboutView'];
+    const navButtons = {
+        'calculatorView': 'showCalculator',
+        'mathView': 'showMath',
+        'aboutView': 'showAbout'
+    };
+    
+    const inputCard = document.getElementById('inputParamsCard');
+    if (inputCard) {
+        inputCard.classList.toggle('hidden', viewId === 'aboutView');
+    }
+
+    views.forEach(view => {
+        const viewElement = document.getElementById(view);
+        if (viewElement) viewElement.classList.add('hidden');
+        const buttonElement = document.getElementById(navButtons[view]);
+        if (buttonElement) {
+            buttonElement.classList.remove('btn-primary');
+            buttonElement.classList.add('btn-secondary');
+        }
+    });
+
+    const targetViewElement = document.getElementById(viewId);
+    if (targetViewElement) targetViewElement.classList.remove('hidden');
+    const targetButtonElement = document.getElementById(navButtons[viewId]);
+    if (targetButtonElement) {
+        targetButtonElement.classList.remove('btn-secondary');
+        targetButtonElement.classList.add('btn-primary');
+    }
+
+    if (window.MathJax) {
+        window.MathJax.typesetPromise();
+    }
+}
+
+// Theme Toggle Logic
+const themeToggle = document.getElementById('themeToggle');
+if (themeToggle) {
+    themeToggle.addEventListener('click', () => {
+        const htmlElement = document.documentElement;
+        const currentTheme = htmlElement.getAttribute('data-bs-theme');
+        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        htmlElement.setAttribute('data-bs-theme', newTheme);
+        const themeIcon = themeToggle.querySelector('i');
+        if (themeIcon) {
+            themeIcon.className = newTheme === 'dark' ? 'bi bi-sun-fill' : 'bi bi-moon-fill';
+        }
+    });
+}
+
+// Initial call and event listeners
+document.addEventListener('DOMContentLoaded', () => {
+    const inputs = [
+        'yourDice', 'totalDice', 'claimQuantity', 'claimFace',
+        'claimantDice', 'wildOnes', 'bluffRate'
+    ];
+
+    inputs.forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.addEventListener('input', updateAllViews);
+        }
+    });
+
+    // Set initial active view
+    switchView('calculatorView');
+    updateAllViews();
+});
+</script>
+  </body>
 </html>
