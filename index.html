@@ -1,467 +1,460 @@
 <!DOCTYPE html>
-<html lang="en" data-bs-theme="light">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Liar's Dice Probability Calculator</title>
-    <!-- Bootstrap and Bootstrap Icons -->
-    <link
-      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
-      rel="stylesheet"
-    />
-    <link
-      href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css"
-      rel="stylesheet"
-    />
-    <!-- MathJax for LaTeX rendering -->
+    <title>Liar's Dice Calculator</title>
     <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
     <script
       id="MathJax-script"
       async
       src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"
     ></script>
-    <link rel="stylesheet" href="styles.css" />
+    <script>
+      window.MathJax = {
+        tex: {
+          inlineMath: [
+            ["$", "$"],
+            ["\\(", "\\)"],
+          ],
+        },
+        startup: {
+          ready: () => {
+            MathJax.startup.defaultReady();
+            // Now patch updateMathView
+            const oldUpdate = updateMathView;
+            updateMathView = function (...args) {
+              oldUpdate.apply(this, args);
+              MathJax.typesetPromise();
+            };
+          },
+        },
+      };
+    </script>
+<link rel="stylesheet" href="style.css" />
   </head>
   <body>
     <div class="container">
-      <h1 class="mt-4 text-center">Liar's Dice Probability</h1>
-
-      <div class="nav-buttons">
-        <button id="showCalculator" class="btn btn-primary">
-          <i class="bi bi-calculator"></i> Calculator
-        </button>
-        <button id="showMath" class="btn btn-secondary">
-          <i class="bi bi-info-circle"></i> How the Math Works
-        </button>
-        <button id="showAbout" class="btn btn-secondary">
-          <i class="bi bi-info-circle"></i> About
-        </button>
-      </div>
-
-      <!-- Game Setup Section -->
-      <div id="inputParamsCard" class="card">
-        <h2>🎲 Game Setup</h2>
-        <div id="alert-message" class="alert-message"></div>
-
-        <div class="input-grid">
-          <!-- First row -->
-          <div>
-            <label for="totalDice">Total Dice in Play:</label>
-            <input type="number" id="totalDice" value="10" min="1" max="100" />
+      <header>
+        <div class="title">
+          <span class="title-icon">🎲</span>
+          <span>Liar's Dice Calculator</span>
+        </div>
+        <div class="header-controls">
+          <div class="nav-buttons" id="navButtons">
+            <button id="navCalculator">📊 Calculator</button>
+            <button id="navMath" class="secondary">📈 How It Works</button>
           </div>
-          <div>
-            <label for="yourDice">Your Dice (e.g., 1,2,2,3):</label>
-            <input type="text" id="yourDice" value="1,2,2,3" />
+          <button class="mode-toggle" id="pipsToggle" title="Toggle pip view">
+            5
+          </button>
+          <button class="theme-toggle" id="themeToggle">🌙</button>
+        </div>
+<div id="ios-cta-container">
+  <a href="https://kylescheer.com/apps/liars-dice" target="_blank" rel="noopener noreferrer" aria-label="Download on the App Store">
+    <img src="app-store-badge.png" alt="Download on the App Store" style="height: 50px;">
+  </a>
+</div>      </header>
+
+      <!-- Game Setup Card (appears on all views) -->
+      <div class="main-layout">
+        <div class="setup-column">
+          <div class="card" id="setupCard">
+            <div class="card-title">🎮 Game Setup</div>
+            <div id="alertMessage" class="alert-message"></div>
+
+            <div class="form-group spinner-input-small">
+              <label>Total Dice in Play</label>
+              <div class="spinner-input">
+                <button onclick="decrementTotal()">−</button>
+                <input type="number" id="totalDice" value="15" readonly />
+                <button onclick="incrementTotal()">+</button>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Your Dice</label>
+              <div class="dice-grid" id="diceInput"></div>
+              <div class="die-chip-display" id="yourDiceDisplay"></div>
+            </div>
+
+            <div class="section-divider"><span>Previous Claim</span></div>
+
+            <div class="claim-input-row">
+              <div class="form-group">
+                <label for="claimQuantity">Quantity</label>
+                <div class="spinner-input">
+                  <button onclick="decrementQuantity()">−</button>
+                  <input type="number" id="claimQuantity" value="5" readonly />
+                  <button onclick="incrementQuantity()">+</button>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Face</label>
+                <button
+                  class="die-selector"
+                  id="claimFaceButton"
+                  onclick="rotateFace()"
+                >
+                  3
+                </button>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>
+                <input type="checkbox" id="wildOnes" checked /> 1s are Wild
+              </label>
+            </div>
+
+            <div class="section-divider">
+              <span>For Adjusted Probability</span>
+            </div>
+
+            <div class="form-group">
+              <label>Claimant's Dice</label>
+              <div class="spinner-input">
+                <button onclick="decrementClaimant()">−</button>
+                <input type="number" id="claimantDice" value="5" readonly />
+                <button onclick="incrementClaimant()">+</button>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="bluffRate"
+                >Bluff Rate: <span id="bluffRateValue">10</span>%</label
+              >
+              <input type="range" id="bluffRate" min="0" max="100" value="10" />
+            </div>
           </div>
         </div>
 
-        <!-- Force Previous Claim fields to full width row -->
-        <div class="input-grid full-width-row">
-          <div>
-            <label for="claimQuantity">Previous Claim Quantity:</label>
-            <input
-              type="number"
-              id="claimQuantity"
-              value="6"
-              min="1"
-              max="100"
-            />
-          </div>
-          <div>
-            <label for="claimFace">Previous Claim Face:</label>
-            <select id="claimFace">
-              <option value="1">1</option>
-              <option value="2">2</option>
-              <option value="3">3</option>
-              <option value="4">4</option>
-              <option value="5">5</option>
-              <option value="6">6</option>
-            </select>
-          </div>
-          <div class="checkbox-container">
-            <label for="wildOnes">Wild 1s:</label>
-            <input type="checkbox" id="wildOnes" checked />
-          </div>
-        </div>
-        <div class="section-divider">
-          <span>For calculating adjusted probability</span>
-        </div>
-        <div class="input-grid">
-          <!-- Divider with caption -->
-          <div>
-            <label for="claimantDice">Claimant Dice:</label>
-            <input
-              type="number"
-              id="claimantDice"
-              value="3"
-              min="0"
-              max="100"
-            />
-          </div>
-          <div>
-            <label for="bluffRate"
-              >Bluff Rate (<span id="bluffRateValue">10</span>%):</label
+        <!-- Results Column -->
+        <div class="results-column" id="resultsColumn">
+          <!-- Calculator View -->
+          <div id="calculatorView" class="view-section active">
+            <!-- Probabilities Card -->
+            <div
+              class="card result-card"
+              data-section="probabilities"
+              draggable="true"
             >
-            <input
-              type="range"
-              id="bluffRate"
-              min="0"
-              max="1"
-              step="0.01"
-              value="0.1"
-            />
-          </div>
-        </div>
-      </div>
+              <div class="card-title" onclick="toggleSection('probabilities')">
+                <span>📊 Results</span>
+                <div class="card-controls">
+                  <span class="eye-icon">👁️</span>
+                </div>
+              </div>
+              <div class="card-content">
+                <div class="results-box">
+                  <div class="results-box-label">Normal Probability</div>
+                  <div class="results-box-value" id="normalProb">0.0%</div>
+                </div>
+                <div class="results-box">
+                  <div class="results-box-label">Adjusted Probability</div>
+                  <div class="results-box-value" id="adjustedProb">0.0%</div>
+                </div>
+              </div>
+            </div>
 
-      <!-- Calculator View -->
-      <div id="calculatorView">
-        <div class="card mb-4">
-          <div class="card-body">
-            <h3 class="card-title">Results</h3>
-            <div id="results">
-              <!-- Display the Default Probability -->
-              <h4 class="text-xl font-medium text-gray-700 mb-1">
-                Normal Probability (without claimant's dice):
-              </h4>
-              <p id="defaultClaimProbability" class="text-gray-600 mb-4"></p>
+            <!-- Recommended Move Card -->
+            <div
+              class="card result-card"
+              data-section="recommended"
+              draggable="true"
+            >
+              <div class="card-title" onclick="toggleSection('recommended')">
+                <span>🎯 Highest Probability Move</span>
+                <div class="card-controls">
+                  <span class="eye-icon">👁️</span>
+                </div>
+              </div>
+              <div class="card-content">
+                <div id="recommendedMove"></div>
+              </div>
+            </div>
 
-              <!-- Display the Adjusted Probability -->
-              <h4 class="text-xl font-medium text-gray-700 mb-1">
-                Adjusted Probability (factoring in all claimant possibilities):
-              </h4>
-              <p
-                id="adjustedClaimProbabilitynew"
-                class="text-gray-600 mb-4"
-              ></p>
+            <!-- Distribution Card -->
+            <div
+              class="card result-card"
+              data-section="distribution"
+              draggable="true"
+            >
+              <div class="card-title" onclick="toggleSection('distribution')">
+                <span>📈 Expected Distribution</span>
+                <div class="card-controls">
+                  <span class="eye-icon">👁️</span>
+                </div>
+              </div>
+              <div class="card-content">
+                <div class="distribution-grid" id="distributionGrid"></div>
+              </div>
+            </div>
 
-              <!-- Next Possible Moves Table -->
-              <h4 class="text-xl font-medium text-gray-700 mb-4">
-                Next Possible Moves:
-              </h4>
-              <div class="overflow-x-auto">
-                <table class="w-full table-auto border-collapse">
+            <!-- Next Moves Card -->
+            <div class="card result-card" data-section="moves" draggable="true">
+              <div class="card-title" onclick="toggleSection('moves')">
+                <span>🎯 Next Possible Moves</span>
+                <div class="card-controls">
+                  <span class="eye-icon">👁️</span>
+                </div>
+              </div>
+              <div class="card-content">
+                <table class="moves-table">
                   <thead>
-                    <tr class="bg-gray-200">
-                      <th
-                        class="px-4 py-2 text-left text-gray-700 font-medium rounded-tl-lg"
-                      >
-                        Next Move
-                      </th>
-                      <th class="px-4 py-2 text-left text-gray-700 font-medium">
-                        Normal Probability
-                      </th>
-                      <th
-                        class="px-4 py-2 text-left text-gray-700 font-medium rounded-tr-lg"
-                      >
-                        Adjusted Probability
-                      </th>
+                    <tr>
+                      <th>Move</th>
+                      <th>Normal Prob.</th>
+                      <th>Adjusted Prob.</th>
                     </tr>
                   </thead>
-                  <tbody id="nextMovesTable"></tbody>
+                  <tbody id="movesTableBody"></tbody>
                 </table>
               </div>
             </div>
           </div>
+
+          <!-- Math View -->
+          <div id="mathView" class="view-section">
+            <div class="card">
+              <h2>📈 How the Math Works</h2>
+              <p>
+                Learn about the probability calculations that power the Liar's
+                Dice Calculator.
+              </p>
+            </div>
+
+            <!-- Normal Probability Section -->
+            <div class="card">
+              <h2>Normal Probability</h2>
+              <p>
+                The normal probability is the chance a claim is true based on
+                all unknown dice in the game, treating them as a single random
+                pool. It doesn't consider the claimant's hand or bluffing.
+              </p>
+
+              <div class="step-card">
+                <h3>1️⃣ Count Your Contribution</h3>
+                <p>
+                  First, we count how many dice in your hand contribute to the
+                  claim. Ones are wild and count as any number.
+                </p>
+                <div id="normalStep1" class="math-block"></div>
+              </div>
+
+              <div class="step-card">
+                <h3>2️⃣ Unknown Dice Pool</h3>
+                <p>
+                  Next, we calculate the total number of dice that are unknown
+                  to you. This includes the dice held by all other players. We
+                  also determine the remaining needed dice to meet the claim.
+                </p>
+                <div id="normalStep2" class="math-block"></div>
+              </div>
+
+              <div class="step-card">
+                <h3>3️⃣ Binomial Probability</h3>
+                <p>
+                  We use the binomial formula to find the probability of getting
+                  exactly the required number of dice (or more) from the unknown
+                  pool. What's the probability the unknown dice provide what you
+                  need?
+                </p>
+                <div class="math-block">
+                  <strong>Generic Formula:</strong>
+                  <div id="normalFormulaGeneric"></div>
+                </div>
+                <div class="math-block">
+                  <strong>Formula:</strong>
+                  <div id="normalFormula" style="margin-top: 10px"></div>
+                </div>
+                <div class="table-container">
+                  <table id="normalTable">
+                    <thead>
+                      <tr>
+                        <th>k</th>
+                        <th>Calculation</th>
+                        <th>Value</th>
+                      </tr>
+                    </thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
+              </div>
+              <div class="card">
+                <h3>4️⃣ Final Probability</h3>
+                <p>
+                  Finally, we sum the probabilities of getting exactly the
+                  number of matches we need and all higher possibilities.
+                </p>
+                <div class="final-result" id="finalNormalResult"></div>
+              </div>
+            </div>
+
+            <!-- Adjusted Probability Section -->
+            <div class="card">
+              <h2>Adjusted Probability (Bayesian)</h2>
+              <p>
+                The adjusted probability is a more sophisticated calculation
+                that factors in the claimant's dice and a bluffing model using
+                Bayesian inference. It's the probability the claim is true,
+                <i>given that the claimant made it</i>.
+              </p>
+
+              <div class="step-card">
+                <h3>1️⃣ Count Your Dice Contribution</h3>
+                <p>
+                  Look at your dice and count how many show the claimed number.
+                  Ones are wild and count as any number. The remaining needed
+                  dice must come from other players.
+                </p>
+                <div id="adjStep1" class="math-block"></div>
+              </div>
+
+              <div class="step-card">
+                <h3>2️⃣ Calculate Prior Probabilities (Binomial)</h3>
+                <p>
+                  We calculate the probability each possible number of claimant
+                  dice contribute to the claim using the binomial formula. The
+                  example table below shows the probabilities for to 5 matches
+                  from the claimant's dice.
+                  <i
+                    >What are the likely distributions of the claimant's
+                    dice?</i
+                  >
+                </p>
+                <div class="math-block">
+                  <strong>Generic Formula:</strong>
+                  <div id="adjFormulaGeneric1" style="margin-top: 10px"></div>
+                </div>
+                <div class="math-block">
+                  <strong>Formula:</strong>
+                  <div id="adjFormula1" style="margin-top: 10px"></div>
+                </div>
+                <div class="table-container">
+                  <table id="priorTable">
+                    <thead>
+                      <tr>
+                        <th>k</th>
+                        <th>Calculation</th>
+                        <th>Value</th>
+                      </tr>
+                    </thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div class="step-card">
+                <h3>3️⃣ Account for Bluffing with Bayes' Theorem</h3>
+                <p>
+                  The claim might be exaggerated. We estimate the probability of
+                  the claim being made given a certain number of matches a
+                  player holds, considering a fixed bluff rate.
+                  <i
+                    >When would the claimant make this claim given their
+                    hand?</i
+                  >
+                </p>
+                <div id="adjStep3" class="math-block"></div>
+              </div>
+
+              <div class="step-card">
+                <h3>4️⃣ Calculate Posterior Probabilities</h3>
+                <p>
+                  We use Bayes' Theorem to adjust the prior probabilities based
+                  on the fact that a claim was made. This gives us a new
+                  probability distribution for the number of matches the
+                  claimant holds, called the posterior probability.
+                </p>
+                <div class="math-block">
+                  <strong>Generic Formula:</strong>
+                  <div id="adjFormula2" style="margin-top: 10px"></div>
+                </div>
+                <div class="table-container">
+                  <table id="posteriorTable">
+                    <thead>
+                      <tr>
+                        <th>k</th>
+                        <th>Calculation</th>
+                        <th>Value</th>
+                      </tr>
+                    </thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div class="step-card">
+                <h3>5️⃣ Calculate Probability Claim is True</h3>
+                <p>
+                  For each possible number of matches the claimant holds
+                  (\(K\)), we calculate the probability that the remaining
+                  unknown dice satisfy the claim. We use a binomial tail sum for
+                  this.
+                </p>
+
+                <div
+                  class="math-block"
+                >
+                  <p><strong>Generic Formula:</strong></p>
+                  <div id="adj-step5-formula-generic"></div>
+                </div>
+
+                <div class="table-container">
+                  <table id="probTrueTable">
+                    <thead>
+                      <tr>
+                        <th>\(k\)</th>
+                        <th>Calculation</th>
+                        <th>Value</th>
+                      </tr>
+                    </thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div class="step-card">
+                <h3>6️⃣ Final Adjusted Probability</h3>
+                <p>
+                   Finally, we multiply the posterior probabilities by the probability the claim is true for each and sum them up. This is the final adjusted probability the claim is likely true, considering both dice probability and bluffing. 
+                </p>
+                <div class="math-block">
+                  <strong>Generic Formula:</strong>
+                  <div id="adjFinalFormulaGeneric" style="margin-top: 10px"></div>
+                </div>
+                <div class="table-container">
+                  <table id="finalAdjTable">
+                    <thead>
+                      <tr>
+                        <th>k</th>
+                        <th>Posterior</th>
+                        <th>P(true|k)</th>
+                        <th>Weighted Product</th>
+                      </tr>
+                    </thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div class="final-result" id="finalAdjResult"></div>
+            </div>
+          </div>
         </div>
       </div>
-
-      <!-- How the Math Works View -->
-      <div id="mathView" class="hidden">
-        <div class="card">
-          <h2>📈 How the Math Works</h2>
-          <p>Learn about the probability calculations behind the tool.</p>
+      <!-- Footer -->
+      <footer class="border-top text-center py-4 mt-auto">
+        <div>
+          Made by
+          <a href="https://www.kylescheer.com" target="_blank">Kyle Scheer</a>
         </div>
-
-        <!-- Normal Probability Section -->
-        <div class="card">
-          <h2>Normal Probability</h2>
-          <p>
-            The normal probability is the chance a claim is true based on all
-            unknown dice in the game, treating them as a single random pool. It
-            doesn't consider the claimant's hand or bluffing.
-          </p>
-
-          <!-- Step 1 -->
-          <div class="step-card">
-            <h3>1️⃣ Count Your Contribution</h3>
-            <p>
-              First, we count how many dice in your hand contribute to the
-              claim. Ones are wild and count as any number.
-            </p>
-            <div id="normal-step-1-info" class="info-box"></div>
-          </div>
-
-          <!-- Step 2 -->
-          <div class="step-card">
-            <h3>2️⃣ Determine the Unknown Dice Pool</h3>
-            <p>
-              Next, we calculate the total number of dice that are unknown to
-              you. This includes the dice held by all other players. We also
-              determine the remaining needed dice to meet the claim.
-            </p>
-            <div id="normal-step-2-info-1" class="info-box mb-2"></div>
-            <div id="normal-step-2-info-2" class="info-box"></div>
-          </div>
-
-          <!-- Step 3 -->
-          <div class="step-card">
-            <h3>3️⃣ Calculate Binomial Probabilities</h3>
-            <p>
-              We use the binomial formula to find the probability of getting
-              exactly the required number of dice (or more) from the unknown
-              pool.
-            </p>
-            <div class="math-block">
-              <p><strong>Generic Formula:</strong></p>
-              <div id="normalFormulaGeneric"></div>
-            </div>
-            <div class="math-block">
-              <p><strong>Example:</strong></p>
-              <div id="normalFormulaExample"></div>
-            </div>
-            <div class="table-container">
-              <table id="normalTable">
-                <thead>
-                  <tr>
-                    <th>\(k\)</th>
-                    <th>Formula</th>
-                    <th>Value</th>
-                  </tr>
-                </thead>
-                <tbody></tbody>
-              </table>
-            </div>
-          </div>
-
-          <!-- Step 4 -->
-          <div class="step-card">
-            <h3>4️⃣ Final Probability</h3>
-            <p>
-              Finally, we sum the probabilities of getting exactly the number of
-              matches we need and all higher possibilities.
-            </p>
-            <div class="final-result" id="finalNormalProbability"></div>
-          </div>
-        </div>
-
-        <!-- Adjusted Probability Section -->
-        <div class="card">
-          <h2>Adjusted Probability (Bayesian)</h2>
-          <p>
-            The adjusted probability is a more sophisticated calculation that
-            factors in the claimant's dice and a bluffing model using Bayesian
-            inference. It's the probability the claim is true,
-            <i>given that the claimant made it</i>.
-          </p>
-
-          <!-- Step 1 -->
-          <div class="step-card">
-            <h3>1️⃣ Count Your Dice</h3>
-            <p>
-              Look at your dice and count how many show the claimed number. Ones
-              are wild and count as any number. The remaining needed dice must
-              come from other players.
-            </p>
-            <div id="adj-step-1-info" class="info-box"></div>
-          </div>
-
-          <!-- Step 2 -->
-          <div class="step-card">
-            <h3>2️⃣ Calculate Prior Probabilities (Binomial)</h3>
-            <p>
-              We calculate the probability each possible number of claimant dice
-              contribute to the claim using the binomial formula. The example
-              table below shows the probabilities for \(k = 0\) to
-              <span id="adj-step2-n"></span> matches from the claimant's dice.
-            </p>
-            <div class="math-block">
-              <p><strong>Generic Formula:</strong></p>
-              <div id="priorFormulaGeneric"></div>
-            </div>
-            <div class="table-container">
-              <table id="priorTable">
-                <thead>
-                  <tr>
-                    <th>\(k\)</th>
-                    <th>Formula</th>
-                    <th>Value</th>
-                  </tr>
-                </thead>
-                <tbody></tbody>
-              </table>
-            </div>
-          </div>
-
-          <!-- Step 3 -->
-          <div class="step-card">
-            <h3>3️⃣ Account for Bluffing with Bayes' Theorem</h3>
-            <p>
-              The claim might be exaggerated. We estimate the probability of the
-              claim being made given a certain number of matches \(K\) a player
-              holds, considering a fixed bluff rate.
-            </p>
-            <div class="info-box">
-              <p id="adj-step3-threshold" class="font-bold"></p>
-            </div>
-            <p id="adj-step3-info-p-claim" class="mt-2 text-sm text-gray-600">
-              This is based on the formula: \(P(\text{claim} | K=k) = 1.0\) if
-              \(k \ge \text{threshold}\), else bluffRate.
-            </p>
-          </div>
-
-          <!-- Step 4 -->
-          <div class="step-card">
-            <h3>4️⃣ Calculate Posterior Probabilities</h3>
-            <p>
-              We use Bayes' Theorem to adjust the prior probabilities based on
-              the fact that a claim was made. This gives us a new probability
-              distribution for the number of matches the claimant holds, called
-              the posterior probability. The formula is:
-            </p>
-            <div class="math-block">
-              <p><strong>Generic Formula:</strong></p>
-              <div id="posteriorFormulaGeneric"></div>
-            </div>
-            <div class="table-container">
-              <table id="posteriorTable">
-                <thead>
-                  <tr>
-                    <th>\(k\)</th>
-                    <th>Formula</th>
-                    <th>Value</th>
-                  </tr>
-                </thead>
-                <tbody></tbody>
-              </table>
-            </div>
-          </div>
-
-          <!-- Step 5 -->
-          <div class="step-card">
-            <h3>5️⃣ Calculate Probability Claim is True</h3>
-            <p>
-              For each possible number of matches the claimant holds (\(K\)), we
-              calculate the probability that the remaining unknown dice satisfy
-              the claim. We use a binomial tail sum for this.
-            </p>
-            <div class="math-block">
-              <p><strong>Generic Formula:</strong></p>
-              <div id="adj-step5-formula-generic"></div>
-            </div>
-            <div class="table-container">
-              <table id="adj-prob-true-table">
-                <thead>
-                  <tr>
-                    <th>\(k\)</th>
-                    <th>Formula</th>
-                    <th>Value</th>
-                  </tr>
-                </thead>
-                <tbody></tbody>
-              </table>
-            </div>
-          </div>
-
-          <!-- Step 6 -->
-          <div class="step-card">
-            <h3>6️⃣ Final Adjusted Probability</h3>
-            <p>
-              Finally, we multiply the posterior probabilities by the
-              probability the claim is true for each \(K\) and sum them up. This
-              is the final adjusted probability the claim is likely true,
-              considering both dice probability and bluffing.
-            </p>
-            <div class="math-block">
-              <p><strong>Generic Formula:</strong></p>
-              <div id="finalAdjFormulaGeneric"></div>
-            </div>
-            <div class="table-container">
-              <table id="finalAdjTable">
-                <thead>
-                  <tr>
-                    <th>\(k\)</th>
-                    <th>Posterior</th>
-                    <th>\(P(\\text{true}|k)\)</th>
-                    <th>Weighted Product</th>
-                  </tr>
-                </thead>
-                <tbody></tbody>
-              </table>
-            </div>
-            <div class="final-result" id="finalAdjustedProbability"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- About View -->
-      <div id="aboutView" class="hidden">
-        <h1 class="mt-4 text-center">About This Tool</h1>
+        <br />
+        <a href="https://github.com/kyletscheer/liars-dice/" target="_blank"
+          >View Code</a
+        ><br /><br />
         <p>
-          This <strong>Liar’s Dice Probability Calculator</strong> helps players
-          analyze probabilities to make better decisions. Liar’s Dice is a game
-          of skill, psychology, and probability. While intuition plays a big
-          role, understanding the math behind the game can give you a sharper
-          edge.
-        </p>
-
-        <h3>Benefits of Using This Tool</h3>
-        <ul>
-          <li>
-            Make <strong>more accurate calls</strong> on whether to challenge a
-            claim.
-          </li>
-          <li>
-            Improve your <strong>bluffing strategies</strong> by estimating
-            plausible claims.
-          </li>
-          <li>
-            Learn how probability impacts decision-making in hidden information
-            games.
-          </li>
-        </ul>
-
-        <p>
-          Try it out, refine your gameplay, and take your
-          <strong>Liar’s Dice strategy</strong> to the next level!
-        </p>
-
-        <h2>How to Use It</h2>
-        <ul>
-          <li>
-            <strong>Enter Your Dice</strong> – Input your dice as
-            comma-separated numbers (e.g., <code>1,2,3</code>).
-          </li>
-          <li>
-            <strong>Enter Total Dice in Play</strong> – The total number of dice
-            still in the game.
-          </li>
-          <li>
-            <strong>Enter the Previous Claim</strong> – The quantity and face
-            value of the last claim.
-          </li>
-          <li>
-            <strong>Enter the Claimant’s Dice Count</strong> – How many dice the
-            claimant has.
-          </li>
-          <li>
-            <strong>Select if 1s are Wild</strong> – If enabled, 1s count as any
-            number.
-          </li>
-        </ul>
-      </div>
-    </div>
-
-    <!-- Footer -->
-    <footer class="border-top text-center py-4 mt-auto">
-          <div>
-            Made by
-            <a href="https://www.kylescheer.com" target="_blank">Kyle Scheer</a>
-          </div>
-          <a href="https://github.com/kyletscheer/liars-dice/" target="_blank"
-            >View Code</a
-          >
-           <p>
           <a
             href="https://ko-fi.com/scheerapps"
             target="_blank"
@@ -477,20 +470,9 @@
             />
           </a>
         </p>
-          <!-- Theme toggle moved outside collapse -->
-          <div
-            class="theme-toggle"
-            id="themeToggle"
-            role="button"
-            aria-label="Toggle theme"
-          >
-            <i class="bi bi-sun-fill"></i>
-          </div>
-        </div>
-      </div>
-    </footer>
+      </footer>
+    </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="script.js"></script>
   </body>
 </html>

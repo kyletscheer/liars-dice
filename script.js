@@ -1,31 +1,25 @@
-// --- Core Math Functions ---
-// A more efficient way to calculate binomial coefficients without recursion.
+// ============== MATH HELPERS ==============
 function binomialCoefficient(n, k) {
   if (k < 0 || k > n) return 0;
   if (k === 0 || k === n) return 1;
   if (k > n / 2) k = n - k;
   let res = 1;
-  for (let i = 1; i <= k; ++i) {
+  for (let i = 1; i <= k; i++) {
     res = (res * (n - i + 1)) / i;
   }
   return res;
 }
 
-// Calculates the "at least k" probability for a binomial distribution.
 function binomialTail(n, p, k) {
   if (k <= 0) return 1.0;
   if (k > n) return 0.0;
   let sum = 0.0;
   for (let i = k; i <= n; i++) {
-    sum +=
-      binomialCoefficient(n, i) * Math.pow(p, i) * Math.pow(1.0 - p, n - i);
+    sum += binomialCoefficient(n, i) * Math.pow(p, i) * Math.pow(1 - p, n - i);
   }
   return sum;
 }
 
-// --- Main Probability Calculation Functions ---
-// Calculates the simple, unadjusted probability of a claim being true.
-// This assumes no information about the claimant's hand.
 function calculateNormalProbability(
   quantity,
   face,
@@ -39,27 +33,25 @@ function calculateNormalProbability(
   ).length;
   const remainingDice = totalDice - yourDice.length;
   const requiredCount = Math.max(0, quantity - yourContribution);
-  const result = binomialTail(remainingDice, p, requiredCount);
+  const probability = binomialTail(remainingDice, p, requiredCount);
   return {
-    probability: result,
-    yourContribution: yourContribution,
-    requiredCount: requiredCount,
-    remainingDice: remainingDice,
-    p: p,
+    probability,
+    yourContribution,
+    requiredCount,
+    remainingDice,
+    p,
   };
 }
 
-// The core Bayesian calculation. This function models the probability
-// of a claim being true, given a specific claimant's claim and a bluff rate.
-function adjustedProbabilityJS({
+function calculateAdjustedProbability(
+  bluffRate,
   totalDice,
   yourDice,
   claimantDice,
   claimQuantity,
   claimFace,
-  wildOnes,
-  bluffRate,
-}) {
+  wildOnes
+) {
   const p = wildOnes && claimFace !== 1 ? 2.0 / 6.0 : 1.0 / 6.0;
   const yourContribution = yourDice.filter(
     (d) => d === claimFace || (wildOnes && d === 1 && claimFace !== 1)
@@ -69,493 +61,831 @@ function adjustedProbabilityJS({
   const R = Math.max(0, claimQuantity - yourContribution);
   const threshold = Math.floor(claimantDice * p);
 
-  // Step 1: Calculate the prior probability of each possible hand for the claimant.
   let priorProbs = [];
   for (let k = 0; k <= claimantDice; k++) {
     priorProbs.push(
       binomialCoefficient(claimantDice, k) *
         Math.pow(p, k) *
-        Math.pow(1.0 - p, claimantDice - k)
+        Math.pow(1 - p, claimantDice - k)
     );
   }
 
-  // Step 2: Calculate the probability of the claim, given each possible hand (with bluffing).
   const pClaimGivenK = priorProbs.map((_, k) =>
     k >= threshold ? 1.0 : bluffRate
   );
   const combinedProbs = priorProbs.map((prob, i) => prob * pClaimGivenK[i]);
-  const PClaim = combinedProbs.reduce((acc, val) => acc + val, 0);
-
-  // Step 3: Calculate the posterior probability of each hand, given the claim.
+  const PClaim = combinedProbs.reduce((a, b) => a + b, 0);
   const posteriorProbs = combinedProbs.map((prob) => prob / PClaim);
 
-  // Step 4: Calculate the probability of the claim being true, given each possible hand.
   let probTrueGivenK = [];
   for (let k = 0; k <= claimantDice; k++) {
     const need = Math.max(0, R - k);
     probTrueGivenK.push(binomialTail(restDice, p, need));
   }
 
-  // Step 5: Combine the posterior and "true" probabilities to get the final adjusted probability.
   const finalWeightedProbs = posteriorProbs.map(
     (prob, i) => prob * probTrueGivenK[i]
   );
-  const totalProb = finalWeightedProbs.reduce((acc, val) => acc + val, 0);
+  const totalProb = finalWeightedProbs.reduce((a, b) => a + b, 0);
 
   return {
     probability: totalProb,
-    yourContribution: yourContribution,
+    yourContribution,
     requiredCount: R,
-    p: p,
-    threshold: threshold,
-    priorProbs: priorProbs,
-    pClaimGivenK: pClaimGivenK,
-    combinedProbs: combinedProbs,
-    posteriorProbs: posteriorProbs,
-    probTrueGivenK: probTrueGivenK,
-    finalWeightedProbs: finalWeightedProbs,
-    PClaim: PClaim,
-    claimantDice: claimantDice,
-    restDice: restDice,
+    p,
+    threshold,
+    priorProbs,
+    pClaimGivenK,
+    combinedProbs,
+    posteriorProbs,
+    probTrueGivenK,
+    finalWeightedProbs,
+    PClaim,
+    claimantDice,
+    restDice,
   };
 }
 
-// --- DOM and Event Handling ---
-// Helper to display in-page messages
-function showMessage(message) {
-  const messageBox = document.getElementById("alert-message");
-  if (messageBox) {
-    messageBox.innerText = message;
-    messageBox.style.display = "block";
+// ============== STATE ==============
+const state = {
+  totalDice: 15,
+  yourDice: [1, 3, 3, 5, 6],
+  claimQuantity: 5,
+  claimFace: 3,
+  claimantDice: 5,
+  wildOnes: true,
+  bluffRate: 0.1,
+  showPips: false,
+  hiddenSections: new Set(),
+  sectionOrder: ["probabilities", "recommended", "distribution", "moves"],
+};
+
+// ============== SECTION MANAGEMENT ==============
+function toggleSection(section) {
+  if (state.hiddenSections.has(section)) {
+    state.hiddenSections.delete(section);
+  } else {
+    state.hiddenSections.add(section);
   }
+  saveSectionState();
+  updateSectionVisibility();
 }
 
-// Main function to update all probability views and tables
-function updateAllViews() {
-  // Get all user input values
-  const totalDice = parseInt(document.getElementById("totalDice").value);
-  const yourDiceStr = document.getElementById("yourDice").value;
-  const yourDice = yourDiceStr
-    .split(",")
-    .map((d) => parseInt(d.trim()))
-    .filter((d) => !isNaN(d));
-  const prevClaimQuantity = parseInt(
-    document.getElementById("claimQuantity").value
+function updateSectionVisibility() {
+  document.querySelectorAll(".result-card").forEach((card) => {
+    const section = card.dataset.section;
+    const eyeIcon = card.querySelector(".eye-icon");
+
+    if (state.hiddenSections.has(section)) {
+      card.classList.add("collapsed");
+      if (eyeIcon) eyeIcon.textContent = "👁️‍🗨️";
+    } else {
+      card.classList.remove("collapsed");
+      if (eyeIcon) eyeIcon.textContent = "👁️";
+    }
+  });
+}
+
+function saveSectionState() {
+  localStorage.setItem(
+    "hiddenSections",
+    JSON.stringify([...state.hiddenSections])
   );
-  const prevClaimFace = parseInt(document.getElementById("claimFace").value);
-  const claimantDice = parseInt(document.getElementById("claimantDice").value);
-  const bluffRate = parseFloat(document.getElementById("bluffRate").value);
-  const wildOnes = document.getElementById("wildOnes").checked;
+  localStorage.setItem("sectionOrder", JSON.stringify(state.sectionOrder));
+}
 
-  // Update bluff rate value display
-  const bluffRateValueElement = document.getElementById("bluffRateValue");
-  if (bluffRateValueElement)
-    bluffRateValueElement.innerText = `${Math.round(bluffRate * 100)}`;
+function loadSectionState() {
+  const hidden = localStorage.getItem("hiddenSections");
+  const order = localStorage.getItem("sectionOrder");
 
-  // Validation and error handling
-  const validDicePattern = /^(\s*[1-6]\s*(,\s*[1-6]\s*)*)?$/;
-  if (!validDicePattern.test(yourDiceStr)) {
-    showMessage(
-      "Invalid dice input! Enter numbers between 1 and 6, separated by commas."
-    );
-    return;
+  if (hidden) {
+    state.hiddenSections = new Set(JSON.parse(hidden));
   }
-  if (isNaN(totalDice) || totalDice < 1) {
-    showMessage("Total Dice must be a positive number.");
-    return;
+  if (order) {
+    state.sectionOrder = JSON.parse(order);
+    applySectionOrder();
   }
-  if (isNaN(prevClaimQuantity) || prevClaimQuantity < 1) {
-    showMessage("Previous Claim Quantity must be at least 1.");
-    return;
-  }
-  if (isNaN(claimantDice) || claimantDice < 1) {
-    showMessage("Claimant's Dice must be 1 or greater.");
-    return;
-  }
-  if (yourDice.length + claimantDice > totalDice) {
-    showMessage(
-      "Your Dice and Claimant Dice together cannot exceed the total number of dice in play."
-    );
-    return;
-  }
-  document.getElementById("alert-message").style.display = "none";
+  updateSectionVisibility();
+}
 
-  // Calculator View updates
-  const defaultProb = calculateNormalProbability(
-    prevClaimQuantity,
-    prevClaimFace,
-    yourDice,
+function applySectionOrder() {
+  const container = document
+    .getElementById("resultsColumn")
+    .querySelector("#calculatorView");
+  state.sectionOrder.forEach((section, index) => {
+    const card = container.querySelector(`[data-section="${section}"]`);
+    if (card) {
+      card.style.order = index;
+    }
+  });
+}
+
+// ============== DRAG AND DROP ==============
+let draggedElement = null;
+
+function initDragAndDrop() {
+  const cards = document.querySelectorAll(".result-card");
+
+  cards.forEach((card) => {
+    card.addEventListener("dragstart", (e) => {
+      draggedElement = card;
+      card.classList.add("dragging");
+      e.dataTransfer.effectAllowed = "move";
+    });
+
+    card.addEventListener("dragend", (e) => {
+      card.classList.remove("dragging");
+      draggedElement = null;
+    });
+
+    card.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      if (draggedElement && draggedElement !== card) {
+        const container = card.parentElement;
+        const afterElement = getDragAfterElement(container, e.clientY);
+
+        if (afterElement == null) {
+          container.appendChild(draggedElement);
+        } else {
+          container.insertBefore(draggedElement, afterElement);
+        }
+      }
+    });
+
+    card.addEventListener("drop", (e) => {
+      e.preventDefault();
+      updateSectionOrderFromDOM();
+    });
+  });
+}
+
+function getDragAfterElement(container, y) {
+  const draggableElements = [
+    ...container.querySelectorAll(".result-card:not(.dragging)"),
+  ];
+
+  return draggableElements.reduce(
+    (closest, child) => {
+      const box = child.getBoundingClientRect();
+      const offset = y - box.top - box.height / 2;
+
+      if (offset < 0 && offset > closest.offset) {
+        return { offset: offset, element: child };
+      } else {
+        return closest;
+      }
+    },
+    { offset: Number.NEGATIVE_INFINITY }
+  ).element;
+}
+
+function updateSectionOrderFromDOM() {
+  const cards = document.querySelectorAll(".result-card");
+  state.sectionOrder = Array.from(cards).map((card) => card.dataset.section);
+  saveSectionState();
+  applySectionOrder();
+}
+
+// ============== SPINNER CONTROLS ==============
+function incrementTotal() {
+  state.totalDice = Math.min(100, state.totalDice + 1);
+  if (state.yourDice.length >= state.totalDice) {
+    state.yourDice = state.yourDice.slice(0, state.totalDice - 1);
+  }
+  updateUI();
+}
+
+function decrementTotal() {
+  state.totalDice = Math.max(2, state.totalDice - 1);
+  if (state.yourDice.length >= state.totalDice) {
+    state.yourDice = state.yourDice.slice(0, state.totalDice - 1);
+  }
+  updateUI();
+}
+
+function incrementQuantity() {
+  state.claimQuantity = Math.min(100, state.claimQuantity + 1);
+  updateUI();
+}
+
+function decrementQuantity() {
+  state.claimQuantity = Math.max(1, state.claimQuantity - 1);
+  updateUI();
+}
+
+function incrementClaimant() {
+  state.claimantDice = Math.min(100, state.claimantDice + 1);
+  updateUI();
+}
+
+function decrementClaimant() {
+  state.claimantDice = Math.max(1, state.claimantDice - 1);
+  updateUI();
+}
+
+function rotateFace() {
+  const btn = document.getElementById("claimFaceButton");
+
+  // Remove any existing flipping class to allow retriggering
+  btn.classList.remove("flipping");
+
+  // Force a reflow so the class re-applies correctly
+  void btn.offsetWidth;
+
+  // Add the flipping class
+  btn.classList.add("flipping");
+
+  // When animation ends, clean up the class
+  const handleEnd = () => {
+    btn.classList.remove("flipping");
+    btn.removeEventListener("animationend", handleEnd);
+  };
+
+  btn.addEventListener("animationend", handleEnd);
+
+  // Cycle the face
+  state.claimFace = (state.claimFace % 6) + 1;
+  updateUI();
+}
+
+// ============== PIP RENDERING ==============
+function createPipDisplay(number) {
+  const pipPositions = {
+    1: [4],
+    2: [0, 8],
+    3: [0, 4, 8],
+    4: [0, 2, 6, 8],
+    5: [0, 2, 4, 6, 8],
+    6: [0, 1, 2, 6, 7, 8],
+  };
+
+  let html = '<div class="pip-display">';
+  for (let i = 0; i < 9; i++) {
+    const hasPip = pipPositions[number].includes(i);
+    html += `<div class="pip ${hasPip ? "" : "visibility-hidden"}"></div>`;
+  }
+  html += "</div>";
+  return html;
+}
+
+// ============== RECOMMENDED MOVE ==============
+function computeRecommendedMove() {
+  const {
     totalDice,
+    yourDice,
+    claimQuantity,
+    claimFace,
+    claimantDice,
+    wildOnes,
+    bluffRate,
+  } = state;
+
+  if (totalDice < yourDice.length || totalDice <= 0) return null;
+
+  // Probability that the previous claim is true
+  const claimTrue = calculateAdjustedProbability(
+    bluffRate,
+    totalDice,
+    yourDice,
+    claimantDice,
+    claimQuantity,
+    claimFace,
     wildOnes
   ).probability;
-  document.getElementById("defaultClaimProbability").innerText = `${(
-    defaultProb * 100
-  ).toFixed(2)}%`;
 
-  const adjustedProbnew = adjustedProbabilityJS({
-    totalDice: totalDice,
-    yourDice: yourDice,
-    claimantDice: claimantDice,
-    claimQuantity: prevClaimQuantity,
-    claimFace: prevClaimFace,
-    wildOnes: wildOnes,
-    bluffRate: bluffRate,
-  }).probability;
-  document.getElementById("adjustedClaimProbabilitynew").innerText = `${(
-    adjustedProbnew * 100
-  ).toFixed(2)}%`;
+  // Probability that calling liar succeeds
+  const callLiarProb = Math.max(0, Math.min(1, 1 - claimTrue));
 
-  const nextMovesTable = document.getElementById("nextMovesTable");
-  if (nextMovesTable) {
-    nextMovesTable.innerHTML = "";
-    for (let i = prevClaimQuantity; i <= totalDice; i++) {
-      for (let j = 1; j <= 6; j++) {
-        if (i === prevClaimQuantity && j <= prevClaimFace) continue;
+  // Find best next claim
+  const tbody = document.getElementById("movesTableBody");
+  let bestClaim = null;
+  let bestProb = 0;
 
-        const probWithoutClaimant = calculateNormalProbability(
-          i,
-          j,
-          yourDice,
-          totalDice,
-          wildOnes
-        ).probability;
-        let probWithClaimant = 0;
+  for (let i = claimQuantity; i <= claimQuantity + 2; i++) {
+    for (let j = 1; j <= 6; j++) {
+      if (i === claimQuantity && j <= claimFace) continue;
 
-        const isSameFace =
-          j === prevClaimFace || (wildOnes && j === 1 && prevClaimFace !== 1);
+      const isSameFace =
+        j === claimFace || (wildOnes && j === 1 && claimFace !== 1);
+      const probWith = isSameFace
+        ? calculateAdjustedProbability(
+            bluffRate,
+            totalDice,
+            yourDice,
+            claimantDice,
+            i,
+            j,
+            wildOnes
+          ).probability
+        : calculateNormalProbability(i, j, yourDice, totalDice, wildOnes)
+            .probability *
+          (1 - bluffRate * 0.5);
 
-        if (isSameFace) {
-          // For the same claimed face, use the full Bayesian calculation with the standard bluff rate.
-          probWithClaimant = adjustedProbabilityJS({
-            totalDice: totalDice,
-            yourDice: yourDice,
-            claimantDice: claimantDice,
-            claimQuantity: i,
-            claimFace: j,
-            wildOnes: wildOnes,
-            bluffRate: bluffRate,
-          }).probability;
-        } else {
-          // For a different face, we model the lowered probability due to symmetry.
-          // A simple linear scaling of the normal probability is a robust proxy for this.
-          probWithClaimant = probWithoutClaimant * (1 - bluffRate * 0.5);
-        }
-
-        nextMovesTable.innerHTML += `
-                    <tr>
-                        <td>${i} x ${j}'s</td>
-                        <td>${(probWithoutClaimant * 100).toFixed(2)}%</td>
-                        <td>${(probWithClaimant * 100).toFixed(2)}%</td>
-                    </tr>
-                `;
+      if (probWith > bestProb) {
+        bestProb = probWith;
+        bestClaim = { quantity: i, face: j, probability: probWith };
       }
     }
   }
 
-  // Math View updates
-  const normalProb = calculateNormalProbability(
-    prevClaimQuantity,
-    prevClaimFace,
+  // Compare calling liar vs best claim
+  if (callLiarProb >= bestProb) {
+    return { type: "callLiar", probability: callLiarProb };
+  } else if (bestClaim) {
+    return { type: "claim", ...bestClaim };
+  } else {
+    return { type: "callLiar", probability: callLiarProb };
+  }
+}
+
+// ============== UI UPDATES ==============
+function renderDiceInput() {
+  const grid = document.getElementById("diceInput");
+  grid.innerHTML = "";
+  for (let i = 1; i <= 6; i++) {
+    const btn = document.createElement("button");
+    btn.className = "die";
+    btn.innerHTML = state.showPips ? createPipDisplay(i) : i;
+    btn.onclick = () => addDie(i);
+    grid.appendChild(btn);
+  }
+}
+
+function renderYourDice() {
+  const display = document.getElementById("yourDiceDisplay");
+  display.innerHTML = "";
+  if (state.yourDice.length === 0) {
+    display.innerHTML =
+      '<span style="color: var(--text-secondary);">Click dice above to add them</span>';
+    return;
+  }
+  state.yourDice.forEach((die, idx) => {
+    const chip = document.createElement("button");
+    chip.className = "die-chip" + (state.showPips ? " pip-mode" : "");
+    chip.innerHTML = state.showPips ? createPipDisplay(die) : die;
+    chip.onclick = () => removeDie(idx);
+    display.appendChild(chip);
+  });
+}
+
+function updateClaimFaceButton() {
+  const btn = document.getElementById("claimFaceButton");
+  btn.classList.toggle("pip-mode", state.showPips);
+  btn.innerHTML = state.showPips
+    ? createPipDisplay(state.claimFace)
+    : state.claimFace;
+}
+
+function updatePipsToggle() {
+  const btn = document.getElementById("pipsToggle");
+  btn.textContent = state.showPips ? "⚫" : state.claimFace;
+  btn.style.fontSize = state.showPips ? "16px" : "20px";
+}
+
+function addDie(face) {
+  if (state.yourDice.length < state.totalDice - 1) {
+    state.yourDice.push(face);
+    updateUI();
+  }
+}
+
+function removeDie(idx) {
+  state.yourDice.splice(idx, 1);
+  updateUI();
+}
+
+function updateCalculatorView() {
+  const {
+    totalDice,
+    yourDice,
+    claimQuantity,
+    claimFace,
+    claimantDice,
+    wildOnes,
+    bluffRate,
+  } = state;
+
+  const normal = calculateNormalProbability(
+    claimQuantity,
+    claimFace,
     yourDice,
     totalDice,
     wildOnes
   );
-  const adjustedProb = adjustedProbabilityJS({
-    totalDice: totalDice,
-    yourDice: yourDice,
-    claimantDice: claimantDice,
-    claimQuantity: prevClaimQuantity,
-    claimFace: prevClaimFace,
-    wildOnes: wildOnes,
-    bluffRate: bluffRate,
-  });
-
-  const normalStep1Info = document.getElementById("normal-step-1-info");
-  if (normalStep1Info)
-    normalStep1Info.innerHTML = `You have <span class="font-bold">${yourDice.join(
-      ", "
-    )}</span>. For a claim of <span class="font-bold">${prevClaimFace}s</span> with Wild 1s, you contribute <span class="font-bold">${
-      normalProb.yourContribution
-    }</span> dice.`;
-  const normalStep2Info1 = document.getElementById("normal-step-2-info-1");
-  if (normalStep2Info1)
-    normalStep2Info1.innerHTML = `Unknown dice = Total Dice - Your Dice = ${totalDice} - ${yourDice.length} = <span class="font-bold">${normalProb.remainingDice}</span>`;
-  const normalStep2Info2 = document.getElementById("normal-step-2-info-2");
-  if (normalStep2Info2)
-    normalStep2Info2.innerHTML = `Remaining needed = Claim - Your Contribution = ${prevClaimQuantity} - ${normalProb.yourContribution} = <span class="font-bold">${normalProb.requiredCount}</span>`;
-
-  updateMathBlock(
-    "normalFormulaGeneric",
-    `\\[ P(K\\ge k) = \\sum_{i=k}^{n} \\binom{n}{i} p^i (1-p)^{n-i} \\]
-                                                where: \\(n\\) is total unknown dice, \\(k\\) is required count, and \\(p\\) is probability of a match.`
+  const adjusted = calculateAdjustedProbability(
+    bluffRate,
+    totalDice,
+    yourDice,
+    claimantDice,
+    claimQuantity,
+    claimFace,
+    wildOnes
   );
-  updateMathBlock(
-    "normalFormulaExample",
-    `\\[ P(K\\ge ${normalProb.requiredCount}) = \\sum_{i=${
-      normalProb.requiredCount
-    }}^{${normalProb.remainingDice}} \\binom{${
-      normalProb.remainingDice
-    }}{i} (${normalProb.p.toFixed(3)})^i (${(1 - normalProb.p).toFixed(3)})^{${
-      normalProb.remainingDice
-    } - i} \\]`
-  );
-  updateNormalTable(
-    "normalTable",
-    normalProb.remainingDice,
-    normalProb.requiredCount,
-    normalProb.p
-  );
-  const finalNormalProbability = document.getElementById(
-    "finalNormalProbability"
-  );
-  if (finalNormalProbability)
-    finalNormalProbability.innerText = `✅ Final Normal Probability: ${(
-      normalProb.probability * 100
-    ).toFixed(2)}%`;
 
-  const adjStep1Info = document.getElementById("adj-step-1-info");
-  if (adjStep1Info)
-    adjStep1Info.innerHTML = `You have <span class="font-bold">${yourDice.join(
-      ", "
-    )}</span>. With wild 1s, you contribute <span class="font-bold">${
-      adjustedProb.yourContribution
-    }</span> to the claim of ${prevClaimQuantity} ${prevClaimFace}'s. Remaining needed from other players: <span class="font-bold">${
-      adjustedProb.requiredCount
-    }</span>.`;
+  document.getElementById("normalProb").textContent =
+    (normal.probability * 100).toFixed(1) + "%";
+  document.getElementById("adjustedProb").textContent =
+    (adjusted.probability * 100).toFixed(1) + "%";
 
-  const adjStep2NElement = document.getElementById("adj-step2-n");
-  if (adjStep2NElement) {
-    adjStep2NElement.innerText = adjustedProb.claimantDice;
+  // Recommended move
+  const recommended = computeRecommendedMove();
+  const recommendedDiv = document.getElementById("recommendedMove");
+  if (recommended) {
+    let title = "";
+    if (recommended.type === "callLiar") {
+      title = "Call Liar";
+    } else {
+      title = `Claim ${recommended.quantity} ${recommended.face}'s`;
+    }
+    recommendedDiv.innerHTML = `
+                    <div class="recommended-move">
+                        <div class="recommended-move-content">
+                            <div class="recommended-move-title">${title}</div>
+                            <div class="recommended-move-subtitle">Mathematically most likely to succeed, using adjusted probability. Not necessarily the best strategic move.</div>
+                        </div>
+                        <div class="recommended-move-prob">${(
+                          recommended.probability * 100
+                        ).toFixed(1)}%</div>
+                    </div>
+                `;
   }
 
-  updateMathBlock(
-    "priorFormulaGeneric",
-    `\\[ P(K=k) = \\binom{n_c}{k} p^k (1-p)^{n_c-k} \\]
-                                                where: \\(n_c\\) is claimant's dice, \\(k\\) is matches, and \\(p\\) is match probability.`
-  );
-  updatePriorTable("priorTable", adjustedProb);
+  // Distribution
+  const grid = document.getElementById("distributionGrid");
+  grid.innerHTML = "";
+  const unknownDice = totalDice - yourDice.length;
+  const maxExpected = wildOnes
+    ? yourDice.length + unknownDice * (2 / 6)
+    : totalDice;
 
-  const adjStep3Threshold = document.getElementById("adj-step3-threshold");
-  if (adjStep3Threshold) {
-    adjStep3Threshold.innerHTML = `Expected Matches \\(E[K] = n_c \\cdot p = ${
-      adjustedProb.claimantDice
-    } \\cdot ${adjustedProb.p.toFixed(3)} = ${(
-      adjustedProb.claimantDice * adjustedProb.p
-    ).toFixed(
-      2
-    )}\\). The bluffing threshold is \\(\\lfloor E[K] \\rfloor = \\lfloor ${(
-      adjustedProb.claimantDice * adjustedProb.p
-    ).toFixed(2)} \\rfloor = ${adjustedProb.threshold}.\\)`;
+  for (let face = 1; face <= 6; face++) {
+    const p = wildOnes && face !== 1 ? 2 / 6 : 1 / 6;
+    const knownCount = yourDice.filter(
+      (d) => d === face || (wildOnes && d === 1 && face !== 1)
+    ).length;
+    const expectedUnknown = unknownDice * p;
+    const total = knownCount + expectedUnknown;
+    const progress = maxExpected > 0 ? (total / maxExpected) * 100 : 0;
+
+    const item = document.createElement("div");
+    item.className = "distribution-item";
+    item.innerHTML = `
+                    <div>${face}s</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: ${progress}%"></div>
+                    </div>
+                    <div>${total.toFixed(1)}</div>
+                `;
+    grid.appendChild(item);
   }
-  updateMathBlock(
-    "posteriorFormulaGeneric",
-    `\\[ P(K=k | \\text{claim}) = \\frac{P(\\text{claim}|K=k) \\cdot P(K=k)}{P(\\text{claim})} \\]`
-  );
-  updatePosteriorTable("posteriorTable", adjustedProb);
 
-  updateMathBlock(
-    "adj-step5-formula-generic",
-    `\\[ P(\\text{claim true}|K=k) = \\sum_{j=R-k}^{n_u} \\binom{n_u}{j} p^j (1-p)^{n_u - j} \\]
-                                                where: \\(n_u\\) is remaining unknown dice, \\(R\\) is remaining matches needed from other players.`
-  );
-  updateProbTrueTable("adj-prob-true-table", adjustedProb);
+  // Next moves table
+  const tbody = document.getElementById("movesTableBody");
+  tbody.innerHTML = "";
+  for (let i = claimQuantity; i <= claimQuantity + 2; i++) {
+    for (let j = 1; j <= 6; j++) {
+      if (i === claimQuantity && j <= claimFace) continue;
 
-  updateMathBlock(
-    "finalAdjFormulaGeneric",
-    `\\[ \\text{Adjusted Probability} = \\sum_{k=0}^{n_c} P(K=k | \\text{claim}) \\cdot P(\\text{claim true} | K=k) \\]`
-  );
-  updateFinalAdjTable("finalAdjTable", adjustedProb);
-  const finalAdjustedProbability = document.getElementById(
-    "finalAdjustedProbability"
-  );
-  if (finalAdjustedProbability)
-    finalAdjustedProbability.innerText = `✅ Final Adjusted Probability: ${(
-      adjustedProb.probability * 100
-    ).toFixed(2)}%`;
+      const probWithout = calculateNormalProbability(
+        i,
+        j,
+        yourDice,
+        totalDice,
+        wildOnes
+      ).probability;
+      const isSameFace =
+        j === claimFace || (wildOnes && j === 1 && claimFace !== 1);
+      const probWith = isSameFace
+        ? calculateAdjustedProbability(
+            bluffRate,
+            totalDice,
+            yourDice,
+            claimantDice,
+            i,
+            j,
+            wildOnes
+          ).probability
+        : probWithout * (1 - bluffRate * 0.5);
 
-  if (window.MathJax) {
-    window.MathJax.typesetPromise();
+      const row = tbody.insertRow();
+      row.innerHTML = `
+                        <td><strong>${i} ${j}'s</strong></td>
+                        <td>${(probWithout * 100).toFixed(1)}%</td>
+                        <td>${(probWith * 100).toFixed(1)}%</td>
+                    `;
+    }
   }
 }
 
-// Helper to update the MathJax blocks
-function updateMathBlock(blockId, formula) {
-  const block = document.getElementById(blockId);
-  if (block) block.innerHTML = formula;
-}
-
-function updateNormalTable(tableId, n, startK, p) {
-  const tableBody = document.querySelector(`#${tableId} tbody`);
-  if (!tableBody) return;
-  tableBody.innerHTML = "";
-  for (let k = startK; k <= n; k++) {
-    const term =
-      binomialCoefficient(n, k) * Math.pow(p, k) * Math.pow(1 - p, n - k);
-    const formula = `\\binom{${n}}{${k}} \\cdot (${p.toFixed(
-      3
-    )})^{${k}} \\cdot (${(1 - p).toFixed(3)})^{${n} - ${k}}`;
-
-    const row = tableBody.insertRow();
-    row.insertCell(0).innerHTML = `\\(${k}\\)`;
-    const formulaCell = row.insertCell(1);
-    formulaCell.innerHTML = `\\[${formula}\\]`;
-    row.insertCell(2).innerText = term.toFixed(5);
+function updateMathView() {
+  const {
+    totalDice,
+    yourDice,
+    claimQuantity,
+    claimFace,
+    claimantDice,
+    wildOnes,
+    bluffRate,
+  } = state;
+  const normal = calculateNormalProbability(
+    claimQuantity,
+    claimFace,
+    yourDice,
+    totalDice,
+    wildOnes
+  );
+  const adjusted = calculateAdjustedProbability(
+    bluffRate,
+    totalDice,
+    yourDice,
+    claimantDice,
+    claimQuantity,
+    claimFace,
+    wildOnes
+  );
+  if (state.wildOnes) {
+    document.getElementById("normalStep1").innerHTML = `
+                You have <strong>${yourDice.join(
+                  ", "
+                )}</strong>. With wild 1s, you contribute <strong>${
+      normal.yourContribution
+    }</strong> dice to the claim of <strong>${claimQuantity} ${claimFace}'s</strong>.
+            `;
+  } else {
+    document.getElementById("normalStep1").innerHTML = `
+                You have <strong>${yourDice.join(
+                  ", "
+                )}</strong>. With wild 1s off, you contribute <strong>${
+      normal.yourContribution
+    }</strong> dice to the claim of <strong>${claimQuantity} ${claimFace}'s</strong>.
+            `;
   }
+
+  document.getElementById("normalStep2").innerHTML = `
+                Unknown dice = Total Dice - Your Dice: ${totalDice} - ${yourDice.length} = <strong>${normal.remainingDice}</strong><br>
+                Remaining needed = Claim - Your Contribution: ${claimQuantity} - ${normal.yourContribution} = <strong>${normal.requiredCount}</strong>
+            `;
+
+  document.getElementById("normalFormulaGeneric").innerHTML = `
+                $$P(X \\ge k) = \\sum_{i=k}^{n} \\binom{n}{i} p^i (1-p)^{n-i}$$ <br><i>where: \\(n\\) is total unknown dice, \\(k\\) is required count, and \\(p\\) is probability of a match.</i>`;
+  document.getElementById("normalFormula").innerHTML = `
+                $$P(X \\ge ${normal.requiredCount}) = \\sum_{i=${
+    normal.requiredCount
+  }}^{${normal.remainingDice}} \\binom{${
+    normal.remainingDice
+  }}{i} (${normal.p.toFixed(3)})^i (${(1 - normal.p).toFixed(3)})^{${
+    normal.remainingDice
+  }-i}$$
+            `;
+
+  updateNormalTable(normal);
+  document.getElementById("finalNormalResult").innerHTML = `
+                ✅ <strong>Final Normal Probability: ${(
+                  normal.probability * 100
+                ).toFixed(2)}%</strong>
+            `;
+  if (state.wildOnes) {
+    document.getElementById("adjStep1").innerHTML = `
+                You have <strong>${yourDice.join(", ")}</strong>. 
+                With wild 1s, you contribute <strong>${
+                  adjusted.yourContribution
+                }</strong> to the claim of <strong>${claimQuantity} ${claimFace}'s</strong>.<br>
+                Remaining needed from other players: <strong>${
+                  adjusted.requiredCount
+                }</strong>
+            `;
+  } else {
+    document.getElementById("adjStep1").innerHTML = `
+                You have <strong>${yourDice.join(", ")}</strong>. 
+                Without wild 1s, you contribute <strong>${
+                  adjusted.yourContribution
+                }</strong> to the claim of <strong>${claimQuantity} ${claimFace}'s</strong>.<br>
+                Remaining needed from other players: <strong>${
+                  adjusted.requiredCount
+                }</strong>
+            `;
+  }
+  document.getElementById("adjFormulaGeneric1").innerHTML = `
+                $$P(K=k) = \\binom{n_c}{k} p^k (1-p)^{n_c-k}$$ <br><i>where: \\(n_c\\) is claimant dice, \\(k\\) is matches from claimant, and \\(p\\) is probability of a match.</i>`;
+  document.getElementById("adjFormula1").innerHTML = `
+                $$P(K=k) = \\binom{${
+                  adjusted.claimantDice
+                }}{k} (${adjusted.p.toFixed(3)})^k (${(1 - adjusted.p).toFixed(
+    3
+  )})^{${adjusted.claimantDice}-k}$$
+            `;
+
+  updatePriorTable(adjusted);
+
+  document.getElementById("adjStep3").innerHTML = `
+                <strong>Expected matches \\(E[K] = n_c × p\\):</strong> ${
+                  adjusted.claimantDice
+                } × ${adjusted.p.toFixed(3)} = ${(
+    adjusted.claimantDice * adjusted.p
+  ).toFixed(2)}<br>
+                <strong>The bluffing threshold is </strong> $\\lfloor ${(
+                  adjusted.claimantDice * adjusted.p
+                ).toFixed(2)}\\rfloor \\approx ${adjusted.threshold}$<br>
+                <strong>Bluffing rule:</strong> P(claim|K=k) = 1.0 if k ≥ ${
+                  adjusted.threshold
+                }, else bluffRate
+            `;
+
+  document.getElementById("adjFormula2").innerHTML = `
+                $$P(K=k | \\text{claim}) = \\frac{P(\\text{claim}|K=k) \\cdot P(K=k)}{P(\\text{claim})}$$
+            `;
+
+  updatePosteriorTable(adjusted);
+  updateProbTrueTable(adjusted);
+  updateFinalAdjTable(adjusted);
+  document.getElementById("adj-step5-formula-generic").innerHTML = `
+    $$P(\\text{Claim True} | K=k) = \\sum_{j=\\max(0, R-k)}^{n_{rest}} \\binom{n_{rest}}{j} p^j (1-p)^{n_{rest}-j} $$
+    <div style="font-size: 0.9rem; margin-top: 8px; color: #555;">
+        <i>where \\(n_{rest}\\) is remaining unknown dice, 
+        \\(p\\) is probability of a match (1/6 or 2/6 if 1s are wild), and 
+        \\(R\\) is total matches remaining needed.</i>
+    </div>
+  `;
+  document.getElementById("adjFinalFormulaGeneric").innerHTML = `
+                   $$\\text{Adjusted Probability} = \\sum_{k=0}^{n_c} P(K=k | \\text{claim}) \\cdot P(\\text{claim true} | K=k) $$
+
+            `;
+  document.getElementById("finalAdjResult").innerHTML = `
+                ✅ <strong>Final Adjusted Probability: ${(
+                  adjusted.probability * 100
+                ).toFixed(2)}%</strong>
+            `;
 }
 
-function updatePriorTable(tableId, data) {
-  const priorTableBody = document.querySelector(`#${tableId} tbody`);
-  if (!priorTableBody) return;
-  priorTableBody.innerHTML = "";
-  for (let i = 0; i < data.priorProbs.length; i++) {
-    const row = priorTableBody.insertRow();
-    row.insertCell(0).innerHTML = `\\(${i}\\)`;
-    const formula = `\\binom{${
-      data.claimantDice
-    }}{${i}} \\cdot (${data.p.toFixed(3)})^{${i}} \\cdot (${(
+function updateNormalTable(data) {
+  const tbody = document.querySelector("#normalTable tbody");
+  tbody.innerHTML = "";
+  for (let i = data.requiredCount; i <= data.remainingDice; i++) {
+    const val =
+      binomialCoefficient(data.remainingDice, i) *
+      Math.pow(data.p, i) *
+      Math.pow(1 - data.p, data.remainingDice - i);
+    const row = tbody.insertRow();
+    row.innerHTML = `
+                    <td>\\(${i}\\)</td>
+                    <td>$\\binom{${
+                      data.remainingDice
+                    }}{${i}} \\cdot (${data.p.toFixed(3)})^${i} \\cdot (${(
       1 - data.p
-    ).toFixed(3)})^{${data.claimantDice} - ${i}}`;
-    const formulaCell = row.insertCell(1);
-    formulaCell.innerHTML = `\\[${formula}\\]`;
-    row.insertCell(2).innerText = data.priorProbs[i].toFixed(3);
+    ).toFixed(3)})^{${data.remainingDice - i}}$</td>
+                    <td>${val.toFixed(5)}</td>
+                `;
   }
 }
 
-function updatePosteriorTable(tableId, data) {
-  const posteriorTableBody = document.querySelector(`#${tableId} tbody`);
-  if (!posteriorTableBody) return;
-  posteriorTableBody.innerHTML = "";
+function updatePriorTable(data) {
+  const tbody = document.querySelector("#priorTable tbody");
+  tbody.innerHTML = "";
+  for (let i = 0; i < data.priorProbs.length; i++) {
+    const row = tbody.insertRow();
+    row.innerHTML = `
+                    <td>\\(${i}\\)</td>
+                    <td>$\\binom{${
+                      data.claimantDice
+                    }}{${i}} \\cdot (${data.p.toFixed(3)})^${i} \\cdot (${(
+      1 - data.p
+    ).toFixed(3)})^{${data.claimantDice - i}}$</td>
+                    <td>${data.priorProbs[i].toFixed(3)}</td>
+                `;
+  }
+}
+
+function updatePosteriorTable(data) {
+  const tbody = document.querySelector("#posteriorTable tbody");
+  tbody.innerHTML = "";
   for (let i = 0; i < data.posteriorProbs.length; i++) {
-    const row = posteriorTableBody.insertRow();
-    row.insertCell(0).innerHTML = `\\(${i}\\)`;
-    const formula = `\\frac{${(
-      data.priorProbs[i] * data.pClaimGivenK[i]
-    ).toFixed(3)}}{${data.PClaim.toFixed(3)}}`;
-    const formulaCell = row.insertCell(1);
-    formulaCell.innerHTML = `\\[${formula}\\]`;
-    row.insertCell(2).innerText = data.posteriorProbs[i].toFixed(3);
+    const row = tbody.insertRow();
+    row.innerHTML = `
+                    <td>\\(${i}\\)</td>
+                    <td>$\\frac{${(
+                      data.priorProbs[i] * data.pClaimGivenK[i]
+                    ).toFixed(3)}}{${data.PClaim.toFixed(3)}}$</td>
+                    <td>${data.posteriorProbs[i].toFixed(3)}</td>
+                `;
   }
 }
 
-function updateProbTrueTable(tableId, data) {
-  const adjProbTrueTableBody = document.querySelector(`#${tableId} tbody`);
-  if (!adjProbTrueTableBody) return;
-  adjProbTrueTableBody.innerHTML = "";
-  for (let i = 0; i < data.probTrueGivenK.length; i++) {
-    const row = adjProbTrueTableBody.insertRow();
-    row.insertCell(0).innerHTML = `\\(${i}\\)`;
-    const needed = Math.max(0, data.requiredCount - i);
-    const formula =
-      i >= data.requiredCount
-        ? "1.0"
-        : `\\sum_{j=${needed}}^{${data.restDice}} \\binom{${
-            data.restDice
-          }}{j} (${data.p.toFixed(3)})^j (${(1 - data.p).toFixed(3)})^{${
-            data.restDice
-          }-j}`;
-    const formulaCell = row.insertCell(1);
-    formulaCell.innerHTML = `\\[${formula}\\]`;
-    row.insertCell(2).innerText = data.probTrueGivenK[i].toFixed(3);
+function updateProbTrueTable(data) {
+  // 1. Update the Generic Formula Block above the table
+  const rest = data.restDice;
+  const pVal = data.p.toFixed(3);
+  const pComp = (1 - data.p).toFixed(3);
+
+  // 2. Populate the Table
+  const tbody = document.querySelector("#probTrueTable tbody");
+  tbody.innerHTML = "";
+
+  for (let k = 0; k < data.probTrueGivenK.length; k++) {
+    // Calculate how many matches we need from the "Rest" of the dice
+    const needed = Math.max(0, data.requiredCount - k);
+    let formulaStr = "";
+
+    // Determine what to show in the Calculation column
+    if (k >= data.requiredCount) {
+      // If claimant already has enough dice (k >= R), prob is 1.0
+      formulaStr = "1.0 (Claimant has enough)";
+    } else if (needed > rest) {
+      // If we need more dice than exist in the rest, prob is 0.0
+      formulaStr = "0.0 (Impossible)";
+    } else {
+      // Show the actual summation formula with numbers
+      formulaStr = `$ \\sum_{j=${needed}}^{${rest}} \\binom{${rest}}{j} (${pVal})^j (${pComp})^{${rest}-j} $`;
+    }
+
+    const row = tbody.insertRow();
+    row.innerHTML = `
+      <td>$${k}$</td>
+      <td style="font-size: 0.9em;">${formulaStr}</td>
+      <td><strong>${data.probTrueGivenK[k].toFixed(4)}</strong></td>
+    `;
   }
 }
 
-function updateFinalAdjTable(tableId, data) {
-  const finalAdjTableBody = document.querySelector(`#${tableId} tbody`);
-  if (!finalAdjTableBody) return;
-  finalAdjTableBody.innerHTML = "";
+function updateFinalAdjTable(data) {
+  const tbody = document.querySelector("#finalAdjTable tbody");
+  tbody.innerHTML = "";
   for (let i = 0; i < data.finalWeightedProbs.length; i++) {
-    const row = finalAdjTableBody.insertRow();
-    row.insertCell(0).innerHTML = `\\(${i}\\)`;
-    row.insertCell(1).innerText = data.posteriorProbs[i].toFixed(3);
-    row.insertCell(2).innerText = data.probTrueGivenK[i].toFixed(3);
-    row.insertCell(3).innerText = data.finalWeightedProbs[i].toFixed(3);
+    const row = tbody.insertRow();
+    row.innerHTML = `
+                    <td>$${i}$</td>
+                    <td>${data.posteriorProbs[i].toFixed(3)}</td>
+                    <td>${data.probTrueGivenK[i].toFixed(3)}</td>
+                    <td>${data.finalWeightedProbs[i].toFixed(3)}</td>
+                `;
   }
 }
 
-// --- View Switching and Initial Call ---
-// Hook up the buttons to switchView
-document
-  .getElementById("showCalculator")
-  .addEventListener("click", () => switchView("calculatorView"));
-document
-  .getElementById("showMath")
-  .addEventListener("click", () => switchView("mathView"));
-document
-  .getElementById("showAbout")
-  .addEventListener("click", () => switchView("aboutView"));
-
-function switchView(viewId) {
-  const views = ["calculatorView", "mathView", "aboutView"];
-  const navButtons = {
-    calculatorView: "showCalculator",
-    mathView: "showMath",
-    aboutView: "showAbout",
-  };
-
-  const inputCard = document.getElementById("inputParamsCard");
-  if (inputCard) {
-    inputCard.classList.toggle("hidden", viewId === "aboutView");
-  }
-
-  views.forEach((view) => {
-    const viewElement = document.getElementById(view);
-    if (viewElement) viewElement.classList.add("hidden");
-    const buttonElement = document.getElementById(navButtons[view]);
-    if (buttonElement) {
-      buttonElement.classList.remove("btn-primary");
-      buttonElement.classList.add("btn-secondary");
-    }
-  });
-
-  const targetViewElement = document.getElementById(viewId);
-  if (targetViewElement) targetViewElement.classList.remove("hidden");
-  const targetButtonElement = document.getElementById(navButtons[viewId]);
-  if (targetButtonElement) {
-    targetButtonElement.classList.remove("btn-secondary");
-    targetButtonElement.classList.add("btn-primary");
-  }
-
-  if (window.MathJax) {
-    window.MathJax.typesetPromise();
-  }
+function updateUI() {
+  document.getElementById("totalDice").value = state.totalDice;
+  document.getElementById("claimQuantity").value = state.claimQuantity;
+  document.getElementById("claimantDice").value = state.claimantDice;
+  renderDiceInput();
+  renderYourDice();
+  updateClaimFaceButton();
+  updatePipsToggle();
+  updateCalculatorView();
+  updateMathView();
 }
 
-// Theme Toggle Logic
-const themeToggle = document.getElementById("themeToggle");
-if (themeToggle) {
-  themeToggle.addEventListener("click", () => {
-    const htmlElement = document.documentElement;
-    const currentTheme = htmlElement.getAttribute("data-bs-theme");
-    const newTheme = currentTheme === "dark" ? "light" : "dark";
-    htmlElement.setAttribute("data-bs-theme", newTheme);
-    const themeIcon = themeToggle.querySelector("i");
-    if (themeIcon) {
-      themeIcon.className =
-        newTheme === "dark" ? "bi bi-sun-fill" : "bi bi-moon-fill";
-    }
-  });
-}
+// ============== EVENT LISTENERS ==============
+document.getElementById("wildOnes").addEventListener("change", (e) => {
+  state.wildOnes = e.target.checked;
+  console.log("Wild Ones:", state.wildOnes);
+  updateUI();
+});
 
-// Initial call and event listeners
-document.addEventListener("DOMContentLoaded", () => {
-  const inputs = [
-    "yourDice",
-    "totalDice",
-    "claimQuantity",
-    "claimFace",
-    "claimantDice",
-    "wildOnes",
-    "bluffRate",
-  ];
+document.getElementById("bluffRate").addEventListener("input", (e) => {
+  state.bluffRate = parseInt(e.target.value) / 100;
+  document.getElementById("bluffRateValue").textContent = e.target.value;
+  updateUI();
+});
 
-  inputs.forEach((id) => {
-    const element = document.getElementById(id);
-    if (element) {
-      element.addEventListener("input", updateAllViews);
-    }
-  });
+document.getElementById("pipsToggle").addEventListener("click", () => {
+  state.showPips = !state.showPips;
+  updateUI();
+});
 
-  // Set initial active view
-  switchView("calculatorView");
-  updateAllViews();
+// View switching
+document.getElementById("navCalculator").addEventListener("click", () => {
+  document.getElementById("calculatorView").classList.add("active");
+  document.getElementById("mathView").classList.remove("active");
+  document.getElementById("navCalculator").classList.remove("secondary");
+  document.getElementById("navMath").classList.add("secondary");
+});
+
+document.getElementById("navMath").addEventListener("click", () => {
+  document.getElementById("mathView").classList.add("active");
+  document.getElementById("calculatorView").classList.remove("active");
+  document.getElementById("navMath").classList.remove("secondary");
+  document.getElementById("navCalculator").classList.add("secondary");
+});
+
+// Theme toggle
+document.getElementById("themeToggle").addEventListener("click", () => {
+  document.body.classList.toggle("dark-mode");
+  const icon = document.getElementById("themeToggle");
+  icon.textContent = document.body.classList.contains("dark-mode")
+    ? "☀️"
+    : "🌙";
+  localStorage.setItem(
+    "theme",
+    document.body.classList.contains("dark-mode") ? "dark" : "light"
+  );
+});
+
+// Load saved theme
+window.addEventListener("DOMContentLoaded", () => {
+  const savedTheme = localStorage.getItem("theme");
+  if (savedTheme === "dark") {
+    document.body.classList.add("dark-mode");
+    document.getElementById("themeToggle").textContent = "☀️";
+  }
+  loadSectionState();
+  initDragAndDrop();
+  updateUI();
 });
